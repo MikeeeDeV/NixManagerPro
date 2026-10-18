@@ -66,11 +66,34 @@ class NixManagerApp(ctk.CTk):
 
         # ---- root grid ----------------------------------------------------
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+
+        # ---- top header bar -----------------------------------------------
+        header = ctk.CTkFrame(self, height=40, fg_color="transparent")
+        header.grid(row=0, column=0, sticky="ew", padx=14, pady=(6, 0))
+
+        title_lbl = ctk.CTkLabel(
+            header,
+            text="❄️  NixManager Pro",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        )
+        title_lbl.pack(side="left", padx=4)
+
+        theme_menu = ctk.CTkOptionMenu(
+            header,
+            values=["Dark", "Light", "System"],
+            width=100,
+            command=self._on_change_theme,
+        )
+        theme_menu.set(self.cfg.theme_mode)
+        theme_menu.pack(side="right", padx=4)
+
+        ctk.CTkLabel(header, text="Theme:", text_color="#a0a0a0").pack(side="right", padx=(0, 4))
 
         # ---- tab view -----------------------------------------------------
         self.tabs = ctk.CTkTabview(self, anchor="nw")
-        self.tabs.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        self.tabs.grid(row=1, column=0, sticky="nsew", padx=10, pady=(4, 10))
+
 
         # Console tab (created first so other widgets can reference its callback)
         console_master = self.tabs.add("🖥  Console")
@@ -144,8 +167,13 @@ class NixManagerApp(ctk.CTk):
         self.channels.refresh()
 
 
+    def _on_change_theme(self, mode: str) -> None:
+        self.logger.info("Switching appearance mode to: %s", mode)
+        ctk.set_appearance_mode(mode)
+
     # ------------------------------------------------------------------
 
     def _on_quit(self) -> None:
         self.logger.info("Shutting down NixManager Pro")
         self.destroy()
+
