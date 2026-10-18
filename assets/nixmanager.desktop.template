@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=NixManager Pro
+GenericName=Nix Package Manager Client
+Comment=Production-grade desktop management suite for Nix multi-user Linux setups
+Exec=@PYTHON_EXEC@ @APP_MAIN@
+Icon=@ICON_PATH@
+Terminal=false
+Categories=System;Settings;PackageManager;
+Keywords=nix;nixos;package;manager;store;software;
+StartupNotify=true
+StartupWMClass=NixManager Pro
