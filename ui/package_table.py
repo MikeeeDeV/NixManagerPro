@@ -20,7 +20,9 @@ from typing import TYPE_CHECKING, List
 
 import customtkinter as ctk
 
+from core.catalog import resolve_rich_details
 from core.exporter import NixEnvironmentExporter
+from .app_details_dialog import AppDetailsDialog
 
 
 if TYPE_CHECKING:
@@ -190,9 +192,12 @@ class PackageTable(ctk.CTkFrame):
 
         # Context menu
         self._ctx_menu = tk.Menu(self, tearoff=0)
+        self._ctx_menu.add_command(label="ℹ️  View Application Details", command=self._on_view_details)
+        self._ctx_menu.add_separator()
         self._ctx_menu.add_command(label="🗑  Standard Uninstall", command=self._on_uninstall)
         self._ctx_menu.add_command(label="💥  Deep Purge (Complete Clean)", command=self._on_purge)
         self._tree.bind("<Button-3>", self._show_context_menu)
+        self._tree.bind("<Double-1>", lambda _: self._on_view_details())
 
     # ---- public API -------------------------------------------------------
 
@@ -368,6 +373,25 @@ class PackageTable(ctk.CTkFrame):
         if self._console_cb:
             self._console_cb("info", msg)
         self.after(500, self.refresh)
+
+    def _on_view_details(self) -> None:
+        """Open rich details modal card for the selected package."""
+        selection = self._tree.selection()
+        if not selection:
+            return
+
+        iid = selection[0]
+        selected_pkg = None
+        for p in self._cached_packages:
+            if f"{p.source}::{p.name}" == iid or p.name == iid:
+                selected_pkg = p
+                break
+
+        if not selected_pkg:
+            return
+
+        item = resolve_rich_details(selected_pkg.name, source=selected_pkg.source, version=selected_pkg.version)
+        AppDetailsDialog(self, item=item, source=selected_pkg.source)
 
     # ---- uninstall & purge ------------------------------------------------
 
