@@ -13,6 +13,7 @@ import tkinter as tk
 
 import customtkinter as ctk
 
+from core.channels import NixChannelManager
 from core.command_executor import AsyncCommandExecutor
 from core.diagnostics import Diagnostics
 from core.generations import NixGenerationManager
@@ -21,10 +22,12 @@ from utils.config import AppConfig, load_config
 from utils.logger import get_logger
 from utils.worker import WorkerPool
 
+from .channels_view import ChannelsView
 from .console_log import ConsoleLog
 from .dashboard import Dashboard
 from .generations_view import GenerationsView
 from .install_dialog import InstallDialog
+
 
 
 
@@ -57,7 +60,9 @@ class NixManagerApp(ctk.CTk):
         self.pkg_manager = NixPackageManager(self.executor)
         self.diagnostics = Diagnostics(self.executor)
         self.gen_manager = NixGenerationManager(self.executor)
+        self.channel_manager = NixChannelManager(self.executor)
         self.worker = WorkerPool(max_workers=self.cfg.max_worker_threads)
+
 
         # ---- root grid ----------------------------------------------------
         self.grid_columnconfigure(0, weight=1)
@@ -99,6 +104,17 @@ class NixManagerApp(ctk.CTk):
         )
         self.generations.pack(fill="both", expand=True)
 
+        # Channels tab
+        chan_master = self.tabs.add("📡  Channels")
+        self.channels = ChannelsView(
+            master=chan_master,
+            channel_manager=self.channel_manager,
+            worker=self.worker,
+            logger=self.logger,
+            console_cb=self.console.append_line,
+        )
+        self.channels.pack(fill="both", expand=True)
+
         # Install tab
         install_master = self.tabs.add("⬇  Install")
         self.installer = InstallDialog(
@@ -109,6 +125,7 @@ class NixManagerApp(ctk.CTk):
             console_cb=self.console.append_line,
         )
         self.installer.pack(fill="both", expand=True)
+
 
 
         # Default visible tab
@@ -124,6 +141,7 @@ class NixManagerApp(ctk.CTk):
     def _startup_refresh(self) -> None:
         self.dashboard.refresh_all()
         self.generations.refresh()
+        self.channels.refresh()
 
 
     # ------------------------------------------------------------------
