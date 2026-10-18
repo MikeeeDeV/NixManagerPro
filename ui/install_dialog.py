@@ -24,6 +24,7 @@ import customtkinter as ctk
 
 from core.catalog import CURATED_PACKAGES, CatalogItem, search_catalog, get_catalog_categories
 from utils.notifications import DesktopNotifier
+from .app_details_dialog import AppDetailsDialog
 
 if TYPE_CHECKING:
     from core.package_manager import NixPackageManager
@@ -140,6 +141,7 @@ class InstallDialog(ctk.CTkFrame):
 
         vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self._tree.yview)
         self._tree.bind("<<TreeviewSelect>>", self._on_tree_select)
+        self._tree.bind("<Double-1>", lambda _: self._open_details_modal())
 
         # ---- WingetUI-style Package Details Card & Action Bar -------------
         bottom_frame = ctk.CTkFrame(self)
@@ -223,6 +225,19 @@ class InstallDialog(ctk.CTkFrame):
             command=self._copy_command,
         )
         copy_cmd_btn.pack(side="left", padx=4)
+
+        details_btn = ctk.CTkButton(
+            meta_row,
+            text="ℹ Details Card",
+            width=110,
+            height=24,
+            font=ctk.CTkFont(size=11),
+            fg_color="transparent",
+            text_color="#f39c12",
+            hover_color=("gray75", "gray25"),
+            command=self._open_details_modal,
+        )
+        details_btn.pack(side="left", padx=4)
 
         # Action Button
         self._install_btn = ctk.CTkButton(
@@ -364,6 +379,25 @@ class InstallDialog(ctk.CTkFrame):
                 values=(hit.get("name", ""), "Nixpkgs", hit.get("attr", ""), "Upstream Derivation"),
             )
         self._status.configure(text=f"Found {len(results)} upstream result(s) for '{query}'")
+
+    def _open_details_modal(self) -> None:
+        """Display rich details modal card for selected item."""
+        sel = self._tree.selection()
+        if not sel:
+            return
+        idx = int(sel[0])
+        raw_item = self._active_items[idx]
+        if isinstance(raw_item, CatalogItem):
+            item = raw_item
+        else:
+            item = CatalogItem(
+                name=raw_item.get("name", ""),
+                attr=raw_item.get("attr", ""),
+                category="Nixpkgs",
+                description="Upstream Nixpkgs package",
+                homepage=f"https://search.nixos.org/packages?query={raw_item.get('name', '')}",
+            )
+        AppDetailsDialog(self, item=item, source="Nix", on_install_callback=lambda _: self._on_install())
 
     # ---- installation ------------------------------------------------------
 
