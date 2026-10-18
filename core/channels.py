@@ -5,13 +5,17 @@ core.channels
 Nix channel management service.
 
 Channels are pointers to upstream package repositories (such as nixpkgs).
-This service exposes listing, adding, removing, updating, and rolling back channels.
+This service exposes listing, adding, removing, updating, probing health,
+and curated quick-subscribe presets.
 """
 
 from __future__ import annotations
 
+import asyncio
+import time
+import urllib.request
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 from .command_executor import AsyncCommandExecutor, CommandError
 
@@ -26,6 +30,62 @@ class ChannelInfo:
 
     name: str
     url: str
+    status: str = "Online"
+    latency_ms: int = 0
+
+
+@dataclass
+class ChannelPreset:
+    """Curated Nix channel preset for 1-click subscription."""
+
+    name: str
+    url: str
+    description: str
+    tag: str = "Official"        # "Stable", "Rolling", "Community", "Overlay"
+    recommended: bool = False
+
+
+CURATED_CHANNEL_PRESETS: List[ChannelPreset] = [
+    ChannelPreset(
+        name="nixpkgs-unstable",
+        url="https://nixos.org/channels/nixpkgs-unstable",
+        description="Bleeding-edge packages updated multiple times daily with latest software.",
+        tag="Rolling",
+        recommended=True,
+    ),
+    ChannelPreset(
+        name="nixos-24.05",
+        url="https://nixos.org/channels/nixos-24.05",
+        description="Production stable release with security backports and highest stability.",
+        tag="Stable",
+        recommended=True,
+    ),
+    ChannelPreset(
+        name="nixos-unstable",
+        url="https://nixos.org/channels/nixos-unstable",
+        description="Full rolling NixOS system channel with cutting-edge system modules.",
+        tag="Rolling",
+    ),
+    ChannelPreset(
+        name="home-manager",
+        url="https://github.com/nix-community/home-manager/archive/master.tar.gz",
+        description="Declarative user configuration, dotfiles, and home environment manager.",
+        tag="Community",
+        recommended=True,
+    ),
+    ChannelPreset(
+        name="rust-overlay",
+        url="https://github.com/oxalica/rust-overlay/archive/master.tar.gz",
+        description="Pure Nix overlay providing all Rust releases, nightly toolchains, and WASM targets.",
+        tag="Overlay",
+    ),
+    ChannelPreset(
+        name="nixos-hardware",
+        url="https://github.com/NixOS/nixos-hardware/archive/master.tar.gz",
+        description="Community hardware profiles and hardware-specific configurations.",
+        tag="Hardware",
+    ),
+]
 
 
 class NixChannelManager:
@@ -79,6 +139,16 @@ class NixChannelManager:
         except CommandError as exc:
             raise ChannelError(f"Channel update failed: {exc}") from exc
 
+    async def update_single_channel(self, name: str) -> str:
+        """
+        Update a specific single channel via `nix-channel --update <name>`.
+        """
+        try:
+            result = await self._exec.run(f"nix-channel --update {name}")
+            return result.stdout.strip() or f"Channel '{name}' updated successfully"
+        except CommandError as exc:
+            raise ChannelError(f"Update failed for '{name}': {exc}") from exc
+
     async def rollback(self) -> str:
         """Rollback channel state via `nix-channel --rollback`."""
         try:
@@ -86,3 +156,24 @@ class NixChannelManager:
             return result.stdout.strip() or "Channel rollback successful"
         except CommandError as exc:
             raise ChannelError(f"Channel rollback failed: {exc}") from exc
+
+    @staticmethod
+    async def check_channel_health(url: str) -> dict:
+        """Check HTTP connectivity and response latency to upstream channel repository."""
+        if not url:
+            return {"status": "Unknown", "latency_ms": 0}
+
+        def _probe():
+            start = time.time()
+            try:
+                req = urllib.request.Request(
+                    url,
+                    headers={"User-Agent": "NixManagerPro/1.7.0"},
+                )
+                with urllib.request.urlopen(req, timeout=4) as resp:
+                    elapsed = int((time.time() - start) * 1000)
+                    return {"status": "Online", "latency_ms": elapsed, "code": resp.status}
+            except Exception as e:
+                return {"status": "Unreachable", "latency_ms": 0, "error": str(e)}
+
+        return await asyncio.to_thread(_probe)
