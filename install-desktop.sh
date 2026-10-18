@@ -41,9 +41,17 @@ exec "${PYTHON_BIN}" "${SCRIPT_DIR}/main.py" "\$@"
 EOF
 chmod +x "${WRAPPER_BIN}"
 
-# 2. Install desktop icon
+# 2. Install desktop icons (SVG and high-res PNG for all desktop themes)
 if [ -f "${SCRIPT_DIR}/assets/nixmanager.svg" ]; then
     cp -f "${SCRIPT_DIR}/assets/nixmanager.svg" "${ICON_DIR}/nixmanager.svg"
+fi
+if [ -f "${SCRIPT_DIR}/assets/nixmanager.png" ]; then
+    mkdir -p "${HOME}/.local/share/icons/hicolor/128x128/apps"
+    cp -f "${SCRIPT_DIR}/assets/nixmanager.png" "${HOME}/.local/share/icons/hicolor/128x128/apps/nixmanager.png"
+    mkdir -p "${HOME}/.local/share/icons/hicolor/256x256/apps"
+    cp -f "${SCRIPT_DIR}/assets/nixmanager.png" "${HOME}/.local/share/icons/hicolor/256x256/apps/nixmanager.png"
+    mkdir -p "${HOME}/.local/share/pixmaps"
+    cp -f "${SCRIPT_DIR}/assets/nixmanager.png" "${HOME}/.local/share/pixmaps/nixmanager.png"
 fi
 
 # 3. Create .desktop file
@@ -61,7 +69,7 @@ Terminal=false
 Categories=System;PackageManager;Settings;
 Keywords=nix;nixos;package;manager;store;software;
 StartupNotify=true
-StartupWMClass=NixManager Pro
+StartupWMClass=nixmanager
 EOF
 chmod +x "${DESKTOP_FILE}"
 
