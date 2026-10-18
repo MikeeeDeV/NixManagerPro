@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 import customtkinter as ctk
 
 from core.channels import CURATED_CHANNEL_PRESETS, ChannelInfo, ChannelPreset, NixChannelManager
+from utils.icons import get_icon
 from utils.notifications import DesktopNotifier
 from .modern_dialog import show_alert_dialog, show_confirm_dialog
 
@@ -57,7 +58,7 @@ class ChannelsView(ctk.CTkFrame):
         # Row 1: Presets Dropdown & Quick Actions
         ctk.CTkLabel(
             preset_frame,
-            text="⚡ Smart Presets:",
+            text="Smart Presets:",
             font=ctk.CTkFont(size=12, weight="bold"),
         ).grid(row=0, column=0, padx=(12, 6), pady=(10, 4), sticky="w")
 
@@ -99,7 +100,9 @@ class ChannelsView(ctk.CTkFrame):
 
         self._add_btn = ctk.CTkButton(
             inputs_box,
-            text="➕  Subscribe / Switch",
+            text="Subscribe / Switch",
+            image=get_icon("plus", size=(14, 14)),
+            compound="left",
             width=160,
             fg_color="#2980b9",
             hover_color="#3498db",
@@ -117,13 +120,20 @@ class ChannelsView(ctk.CTkFrame):
         self._status_lbl.pack(side="left", padx=12)
 
         refresh_btn = ctk.CTkButton(
-            toolbar, text="⟳  Refresh", width=90, command=self.refresh
+            toolbar,
+            text="Refresh",
+            image=get_icon("refresh", size=(14, 14)),
+            compound="left",
+            width=90,
+            command=self.refresh,
         )
         refresh_btn.pack(side="right", padx=4, pady=6)
 
         rollback_btn = ctk.CTkButton(
             toolbar,
-            text="⏪  Rollback",
+            text="Rollback",
+            image=get_icon("history", size=(14, 14)),
+            compound="left",
             width=110,
             fg_color="#d35400",
             hover_color="#e67e22",
@@ -133,8 +143,10 @@ class ChannelsView(ctk.CTkFrame):
 
         remove_btn = ctk.CTkButton(
             toolbar,
-            text="🗑  Remove",
-            width=100,
+            text="Remove Channel",
+            image=get_icon("purge", size=(14, 14)),
+            compound="left",
+            width=130,
             fg_color="#c0392b",
             hover_color="#e74c3c",
             command=self._on_remove,
@@ -143,7 +155,9 @@ class ChannelsView(ctk.CTkFrame):
 
         self._btn_update_single = ctk.CTkButton(
             toolbar,
-            text="🔄  Update Selected",
+            text="Update Selected",
+            image=get_icon("refresh", size=(14, 14)),
+            compound="left",
             width=140,
             fg_color="#3498db",
             hover_color="#2980b9",
@@ -153,8 +167,10 @@ class ChannelsView(ctk.CTkFrame):
 
         self._btn_update_all = ctk.CTkButton(
             toolbar,
-            text="⬇  Update All Channels",
-            width=170,
+            text="Update All Channels",
+            image=get_icon("refresh", size=(14, 14)),
+            compound="left",
+            width=160,
             fg_color="#27ae60",
             hover_color="#2ecc71",
             command=self._on_update_all,
@@ -217,7 +233,9 @@ class ChannelsView(ctk.CTkFrame):
 
         ctk.CTkLabel(
             header_bar,
-            text="📡 Live Channel Download & Unpack Stream:",
+            text=" Live Channel Download & Unpack Stream:",
+            image=get_icon("terminal", size=(14, 14)),
+            compound="left",
             font=ctk.CTkFont(size=11, weight="bold"),
         ).pack(side="left")
 
@@ -297,7 +315,7 @@ class ChannelsView(ctk.CTkFrame):
                 "",
                 "end",
                 iid=c.name,
-                values=(c.name, f"🏷️ {tag}", "Checking…", c.url),
+                values=(c.name, tag, "Checking...", c.url),
             )
 
         self._status_lbl.configure(text=f"Active Channels: {len(chans)}")
@@ -310,9 +328,9 @@ class ChannelsView(ctk.CTkFrame):
         try:
             health = asyncio.run(self._cm.check_channel_health(url))
             latency = health.get("latency_ms", 0)
-            status_text = f"🟢 Online ({latency}ms)" if health.get("status") == "Online" else "🔴 Unreachable"
+            status_text = f"Online ({latency}ms)" if health.get("status") == "Online" else "Unreachable"
         except Exception:
-            status_text = "⚪ Unknown"
+            status_text = "Unknown"
 
         def _update_row():
             if self._tree.exists(name):

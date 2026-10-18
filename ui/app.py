@@ -23,6 +23,7 @@ from core.diagnostics import Diagnostics
 from core.generations import NixGenerationManager
 from core.package_manager import NixPackageManager
 from utils.config import AppConfig, load_config
+from utils.icons import get_icon
 from utils.logger import get_logger
 from utils.worker import WorkerPool
 
@@ -89,9 +90,12 @@ class NixManagerApp(ctk.CTk):
         brand_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         brand_frame.grid(row=0, column=0, padx=14, pady=(18, 16), sticky="w")
 
+        brand_logo = get_icon("shield", size=(20, 20))
         brand_lbl = ctk.CTkLabel(
             brand_frame,
-            text="❄️ NixManager",
+            text=" NixManager",
+            image=brand_logo,
+            compound="left",
             font=ctk.CTkFont(size=18, weight="bold"),
         )
         brand_lbl.pack(side="left")
@@ -112,18 +116,21 @@ class NixManagerApp(ctk.CTk):
         self._nav_buttons: Dict[str, ctk.CTkButton] = {}
 
         nav_items = [
-            ("discover", "🔍  Discover Software"),
-            ("installed", "📦  Installed Packages"),
-            ("updates", "🔄  Updates & Health"),
-            ("generations", "⏱️  Generations & Rollback"),
-            ("channels", "📡  Nix Channels"),
-            ("console", "🖥️  Live Console Stream"),
+            ("discover", "Discover Software", "search"),
+            ("installed", "Installed Packages", "package"),
+            ("updates", "Updates & Health", "updates"),
+            ("generations", "Generations & Rollback", "history"),
+            ("channels", "Nix Channels", "channels"),
+            ("console", "Live Console Stream", "terminal"),
         ]
 
-        for idx, (key, label) in enumerate(nav_items, start=1):
+        for idx, (key, label, icon_name) in enumerate(nav_items, start=1):
+            icon_img = get_icon(icon_name, size=(18, 18))
             btn = ctk.CTkButton(
                 self.sidebar,
-                text=label,
+                text=f"  {label}",
+                image=icon_img,
+                compound="left",
                 anchor="w",
                 height=38,
                 corner_radius=8,
@@ -236,7 +243,7 @@ class NixManagerApp(ctk.CTk):
 
         self.status_text = ctk.CTkLabel(
             self.status_bar,
-            text="🟢  System Ready  |  Nix Daemon Active  |  Zero UI Freezing",
+            text="System Ready  |  Nix Daemon Active  |  Zero UI Freezing",
             font=ctk.CTkFont(size=11),
             text_color="#8ab4f8",
         )
@@ -298,7 +305,7 @@ class NixManagerApp(ctk.CTk):
         self.console_view.append_line(stream, line)
         if len(line.strip()) > 3:
             short_line = line.strip()[:65]
-            self.after(0, lambda: self.status_text.configure(text=f"⚙️  {short_line}…"))
+            self.after(0, lambda: self.status_text.configure(text=f"{short_line}..."))
 
     # ---- lifecycle helpers -------------------------------------------------
 

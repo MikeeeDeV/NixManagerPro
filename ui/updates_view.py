@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, List, Dict
 
 import customtkinter as ctk
 
+from utils.icons import get_icon
 from utils.notifications import DesktopNotifier
 
 if TYPE_CHECKING:
@@ -53,7 +54,9 @@ class UpdatesView(ctk.CTkFrame):
 
         self._title_lbl = ctk.CTkLabel(
             self._header_frame,
-            text="🔄 Updates Center",
+            text=" Updates Center",
+            image=get_icon("updates", size=(20, 20)),
+            compound="left",
             font=ctk.CTkFont(size=20, weight="bold"),
         )
         self._title_lbl.pack(side="left")
@@ -76,16 +79,20 @@ class UpdatesView(ctk.CTkFrame):
 
         self._btn_check = ctk.CTkButton(
             toolbar,
-            text="⚡ Check for Updates",
-            width=150,
+            text="Check for Updates",
+            image=get_icon("refresh", size=(16, 16)),
+            compound="left",
+            width=160,
             command=self.check_for_updates,
         )
         self._btn_check.pack(side="left", padx=8, pady=8)
 
         self._btn_upgrade_selected = ctk.CTkButton(
             toolbar,
-            text="🚀 Upgrade Selected",
-            width=150,
+            text="Upgrade Selected",
+            image=get_icon("upgrade", size=(16, 16)),
+            compound="left",
+            width=160,
             fg_color="#27ae60",
             hover_color="#2ecc71",
             command=self.upgrade_selected,
@@ -94,7 +101,9 @@ class UpdatesView(ctk.CTkFrame):
 
         self._btn_upgrade_all = ctk.CTkButton(
             toolbar,
-            text="✨ Upgrade All",
+            text="Upgrade All",
+            image=get_icon("upgrade", size=(16, 16)),
+            compound="left",
             width=140,
             fg_color="#8e44ad",
             hover_color="#9b59b6",
@@ -137,7 +146,7 @@ class UpdatesView(ctk.CTkFrame):
 
     def check_for_updates(self) -> None:
         """Scan for available upgrades."""
-        self._btn_check.configure(state="disabled", text="⏳ Scanning...")
+        self._btn_check.configure(state="disabled", text="Scanning...")
         self._status_badge.configure(text="Checking repositories...", fg_color="#f39c12")
         self._log_console("Scanning Nix, Snap, and Flatpak repositories for updates...")
 
@@ -156,8 +165,8 @@ class UpdatesView(ctk.CTkFrame):
                     values=(
                         cand.name,
                         cand.current_version,
-                        f"⬆ {cand.new_version}",
-                        f"📦 {cand.source}",
+                        cand.new_version,
+                        cand.source,
                     ),
                 )
                 self._item_map[item_id] = cand
@@ -165,22 +174,22 @@ class UpdatesView(ctk.CTkFrame):
             count = len(candidates)
             if count > 0:
                 self._status_badge.configure(
-                    text=f"🔔 {count} Update(s) Available", fg_color="#27ae60"
+                    text=f"{count} Update(s) Available", fg_color="#27ae60"
                 )
                 self._log_console(f"Found {count} available update(s)!")
                 DesktopNotifier.info("Updates Available", f"{count} application update(s) ready to install.")
             else:
                 self._status_badge.configure(
-                    text="✓ All software up to date", fg_color="#2980b9"
+                    text="All software up to date", fg_color="#2980b9"
                 )
                 self._log_console("All applications across Nix, Snap, and Flatpak are up to date.")
 
-            self._btn_check.configure(state="normal", text="⚡ Check for Updates")
+            self._btn_check.configure(state="normal", text="Check for Updates")
 
         def _on_err(exc: Exception):
             self._status_badge.configure(text="Error checking", fg_color="#c0392b")
             self._log_console(f"Error checking updates: {exc}")
-            self._btn_check.configure(state="normal", text="⚡ Check for Updates")
+            self._btn_check.configure(state="normal", text="Check for Updates")
 
         self._worker.submit_async(_scan, on_success=_on_done, on_error=_on_err)
 
@@ -202,7 +211,7 @@ class UpdatesView(ctk.CTkFrame):
         """Upgrade all candidates."""
         if not self._candidates:
             # Run generic upgrade across all managers
-            self._btn_upgrade_all.configure(state="disabled", text="⏳ Upgrading All...")
+            self._btn_upgrade_all.configure(state="disabled", text="Upgrading All...")
             self._status_badge.configure(text="Upgrading entire system...", fg_color="#8e44ad")
             self._log_console("Starting full-system upgrade across Nix, Snap, and Flatpak...")
 
@@ -212,14 +221,14 @@ class UpdatesView(ctk.CTkFrame):
             def _done(out):
                 self._log_console("Full-system upgrade completed successfully!")
                 self._log_console(out)
-                self._status_badge.configure(text="✓ Upgrade finished", fg_color="#27ae60")
-                self._btn_upgrade_all.configure(state="normal", text="✨ Upgrade All")
+                self._status_badge.configure(text="Upgrade finished", fg_color="#27ae60")
+                self._btn_upgrade_all.configure(state="normal", text="Upgrade All")
                 self.check_for_updates()
 
             def _err(e):
                 self._log_console(f"Upgrade error: {e}")
                 self._status_badge.configure(text="Upgrade failed", fg_color="#c0392b")
-                self._btn_upgrade_all.configure(state="normal", text="✨ Upgrade All")
+                self._btn_upgrade_all.configure(state="normal", text="Upgrade All")
 
             self._worker.submit_async(_run, on_success=_done, on_error=_err)
             return
@@ -238,15 +247,15 @@ class UpdatesView(ctk.CTkFrame):
                 self._log_console(f"[{i}/{total}] Upgrading {cand.source} package: {cand.name}...")
                 try:
                     res = await self._pm.upgrade_candidate(cand)
-                    results.append(f"✓ {cand.name}: {res}")
+                    results.append(f"Successfully upgraded {cand.name}: {res}")
                 except Exception as e:
-                    results.append(f"✗ {cand.name}: {e}")
+                    results.append(f"Failed upgrading {cand.name}: {e}")
             return results
 
         def _on_done(results):
             for r in results:
                 self._log_console(r)
-            self._status_badge.configure(text="✓ Upgrades completed", fg_color="#27ae60")
+            self._status_badge.configure(text="Upgrades completed", fg_color="#27ae60")
             self._btn_upgrade_selected.configure(state="normal")
             self._btn_upgrade_all.configure(state="normal")
             DesktopNotifier.info("Upgrade Complete", f"Successfully processed {total} package upgrade(s).")
