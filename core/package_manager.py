@@ -126,6 +126,14 @@ class NixPackageManager:
                 f"Failed to uninstall '{pkg_name}': {exc}"
             ) from exc
 
+    async def upgrade_all(self) -> str:
+        """Upgrade all packages in the active profile to latest channel versions."""
+        try:
+            result = await self._exec.run("nix-env -u")
+            return result.stdout.strip() or "All packages up to date."
+        except CommandError as exc:
+            raise PackageOperationError(f"Upgrade failed: {exc}") from exc
+
     # ---- maintenance ------------------------------------------------------
 
     async def garbage_collect(self) -> str:
@@ -137,3 +145,4 @@ class NixPackageManager:
             return result.stdout
         except CommandError as exc:
             raise PackageOperationError(f"Garbage collection failed: {exc}") from exc
+
