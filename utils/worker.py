@@ -49,6 +49,31 @@ class WorkerPool:
         """Enqueue *fn* for background execution."""
         self._queue.put((fn, args, kwargs))
 
+    def submit_async(
+        self,
+        async_fn: Callable,
+        *args: Any,
+        on_success: Optional[Callable[[Any], None]] = None,
+        on_error: Optional[Callable[[Exception], None]] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Run an async coroutine on worker thread and invoke callbacks."""
+        import asyncio
+
+        def _runner():
+            try:
+                res = asyncio.run(async_fn(*args, **kwargs))
+                if on_success:
+                    on_success(res)
+            except Exception as exc:
+                if on_error:
+                    on_error(exc)
+                else:
+                    from .logger import get_logger
+                    get_logger().exception("Uncaught exception in async worker task: %s", exc)
+
+        self.submit(_runner)
+
     def pending(self) -> int:
         """Approximate number of tasks waiting to run."""
         return self._queue.qsize()
