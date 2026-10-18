@@ -15,6 +15,7 @@ import customtkinter as ctk
 
 from core.command_executor import AsyncCommandExecutor
 from core.diagnostics import Diagnostics
+from core.generations import NixGenerationManager
 from core.package_manager import NixPackageManager
 from utils.config import AppConfig, load_config
 from utils.logger import get_logger
@@ -22,7 +23,9 @@ from utils.worker import WorkerPool
 
 from .console_log import ConsoleLog
 from .dashboard import Dashboard
+from .generations_view import GenerationsView
 from .install_dialog import InstallDialog
+
 
 
 class NixManagerApp(ctk.CTk):
@@ -53,6 +56,7 @@ class NixManagerApp(ctk.CTk):
         self.executor = AsyncCommandExecutor()
         self.pkg_manager = NixPackageManager(self.executor)
         self.diagnostics = Diagnostics(self.executor)
+        self.gen_manager = NixGenerationManager(self.executor)
         self.worker = WorkerPool(max_workers=self.cfg.max_worker_threads)
 
         # ---- root grid ----------------------------------------------------
@@ -83,6 +87,18 @@ class NixManagerApp(ctk.CTk):
         )
         self.dashboard.pack(fill="both", expand=True)
 
+        # Generations tab
+        gen_master = self.tabs.add("⏱  Generations")
+        self.generations = GenerationsView(
+            master=gen_master,
+            gen_manager=self.gen_manager,
+            worker=self.worker,
+            logger=self.logger,
+            console_cb=self.console.append_line,
+            on_profile_changed=self.dashboard.refresh_all,
+        )
+        self.generations.pack(fill="both", expand=True)
+
         # Install tab
         install_master = self.tabs.add("⬇  Install")
         self.installer = InstallDialog(
@@ -94,6 +110,7 @@ class NixManagerApp(ctk.CTk):
         )
         self.installer.pack(fill="both", expand=True)
 
+
         # Default visible tab
         self.tabs.set("📊  Dashboard")
 
@@ -101,8 +118,13 @@ class NixManagerApp(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self._on_quit)
 
         # ---- auto‑refresh on startup -------------------------------------
-        self.after(200, self.dashboard.refresh_all)
+        self.after(200, self._startup_refresh)
         self.logger.info("NixManager Pro UI initialised")
+
+    def _startup_refresh(self) -> None:
+        self.dashboard.refresh_all()
+        self.generations.refresh()
+
 
     # ------------------------------------------------------------------
 
