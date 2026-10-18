@@ -167,3 +167,35 @@ def search_catalog(query: str = "", category: Optional[str] = None) -> List[Cata
             results.append(item)
 
     return results
+
+
+def get_catalog_item(identifier: str) -> Optional[CatalogItem]:
+    """Find a curated package by name or attribute match."""
+    ident = identifier.strip().lower()
+    for item in CURATED_PACKAGES:
+        if (
+            item.name.lower() == ident
+            or item.attr.lower() == ident
+            or item.attr.lower() == f"nixpkgs.{ident}"
+            or item.name.lower().startswith(ident)
+        ):
+            return item
+    return None
+
+
+def resolve_rich_details(name: str, source: str = "Nix", version: str = "") -> CatalogItem:
+    """Resolve rich metadata for any package, with smart fallback if not in curated list."""
+    curated = get_catalog_item(name)
+    if curated:
+        return curated
+
+    # Smart fallback
+    clean_name = name.split(".")[-1] if "." in name else name
+    return CatalogItem(
+        name=clean_name.title(),
+        attr=f"nixpkgs.{clean_name}" if source == "Nix" else clean_name,
+        category="General",
+        description=f"{clean_name.title()} application package distributed via {source}.",
+        homepage=f"https://search.nixos.org/packages?query={clean_name}" if source == "Nix" else "",
+        license="Open Source",
+    )
