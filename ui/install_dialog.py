@@ -23,6 +23,7 @@ from typing import Dict, List, TYPE_CHECKING
 import customtkinter as ctk
 
 from core.catalog import CURATED_PACKAGES, CatalogItem, search_catalog, get_catalog_categories
+from core.online_search import OnlineSearchService
 from utils.notifications import DesktopNotifier
 from .app_details_dialog import AppDetailsDialog
 
@@ -81,13 +82,23 @@ class InstallDialog(ctk.CTkFrame):
         )
         self._entry.pack(side="left", padx=6, pady=8, fill="x", expand=True)
 
+        online_btn = ctk.CTkButton(
+            top_bar,
+            text="🌐 Live Online Search",
+            width=160,
+            fg_color="#8e44ad",
+            hover_color="#9b59b6",
+            command=self._on_search_online,
+        )
+        online_btn.pack(side="right", padx=6, pady=8)
+
         upstream_btn = ctk.CTkButton(
             top_bar,
-            text="🌐 Fetch More from Nixpkgs",
-            width=180,
+            text="❄️ Nixpkgs Upstream",
+            width=150,
             command=self._on_search_upstream,
         )
-        upstream_btn.pack(side="right", padx=8, pady=8)
+        upstream_btn.pack(side="right", padx=6, pady=8)
 
         # ---- status line ---------------------------------------------------
         self._status = ctk.CTkLabel(
@@ -380,6 +391,39 @@ class InstallDialog(ctk.CTkFrame):
             )
         self._status.configure(text=f"Found {len(results)} upstream result(s) for '{query}'")
 
+    def _on_search_online(self) -> None:
+        """Query live online repositories (Flathub & Nix) asynchronously."""
+        query = self._query_var.get().strip()
+        if not query:
+            self._status.configure(text="⚠️ Please type a search query first (e.g. vlc, spotify, blender, chrome).")
+            return
+
+        self._status.configure(text=f"Searching online Flathub & repositories for '{query}'...")
+        self._clear_mini_log()
+        self._log_terminal(f"Querying online repositories for '{query}'...")
+
+        async def _query_online():
+            return await OnlineSearchService.search_all_online(query)
+
+        def _on_done(items: List[CatalogItem]):
+            self._active_items = items
+            self._tree.delete(*self._tree.get_children())
+            for idx, item in enumerate(items):
+                self._tree.insert(
+                    "",
+                    "end",
+                    iid=str(idx),
+                    values=(item.name, f"🌐 {item.category}", item.attr, item.description),
+                )
+            self._status.configure(text=f"Found {len(items)} online package result(s) for '{query}'")
+            self._log_terminal(f"Loaded {len(items)} online package result(s) from Flathub/remote repositories.")
+
+        def _on_err(exc):
+            self._status.configure(text=f"Online search error: {exc}")
+            self._log_terminal(f"Online search error: {exc}")
+
+        self._worker.submit_async(_query_online, on_success=_on_done, on_error=_on_err)
+
     def _open_details_modal(self) -> None:
         """Display rich details modal card for selected item."""
         sel = self._tree.selection()
@@ -397,7 +441,8 @@ class InstallDialog(ctk.CTkFrame):
                 description="Upstream Nixpkgs package",
                 homepage=f"https://search.nixos.org/packages?query={raw_item.get('name', '')}",
             )
-        AppDetailsDialog(self, item=item, source="Nix", on_install_callback=lambda _: self._on_install())
+        source = "Flatpak" if any(item.attr.startswith(p) for p in ("org.", "com.", "io.", "net.", "app.")) else "Nix"
+        AppDetailsDialog(self, item=item, source=source, on_install_callback=lambda _: self._on_install())
 
     # ---- installation ------------------------------------------------------
 
@@ -434,7 +479,10 @@ class InstallDialog(ctk.CTkFrame):
         self._pm._exec.set_output_callback(custom_cb)
 
         try:
-            asyncio.run(self._pm.install(attr))
+            if any(attr.startswith(p) for p in ("org.", "com.", "io.", "net.", "app.")):
+                asyncio.run(self._pm._exec.run(f"flatpak install -y flathub {attr}"))
+            else:
+                asyncio.run(self._pm.install(attr))
             msg = f"✓ Successfully installed {pkg_name}!"
             urgency = "normal"
         except Exception as exc:
