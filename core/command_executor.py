@@ -13,9 +13,42 @@ UI thread is never blocked.
 from __future__ import annotations
 
 import asyncio
+import os
 import shlex
+import shutil
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional
+
+
+def get_effective_env(custom_env: Optional[dict] = None) -> dict:
+    """Build an execution environment with Nix, Snap, and Flatpak paths guaranteed."""
+    env = dict(os.environ)
+    if custom_env:
+        env.update(custom_env)
+
+    nix_bin_dirs = [
+        os.path.expanduser("~/.nix-profile/bin"),
+        "/nix/var/nix/profiles/default/bin",
+        "/run/current-system/sw/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin",
+        "/snap/bin",
+    ]
+    current_path = env.get("PATH", "")
+    dirs_to_add = [d for d in nix_bin_dirs if os.path.isdir(d) and d not in current_path.split(":")]
+    if dirs_to_add:
+        env["PATH"] = ":".join(dirs_to_add) + ((":" + current_path) if current_path else "")
+
+    nix_share = os.path.expanduser("~/.nix-profile/share")
+    default_share = "/nix/var/nix/profiles/default/share"
+    current_xdg = env.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share")
+    if os.path.isdir(nix_share) and nix_share not in current_xdg:
+        current_xdg = f"{nix_share}:{current_xdg}"
+    if os.path.isdir(default_share) and default_share not in current_xdg:
+        current_xdg = f"{default_share}:{current_xdg}"
+    env["XDG_DATA_DIRS"] = current_xdg
+    return env
 
 
 # ---------------------------------------------------------------------------
@@ -100,10 +133,16 @@ class AsyncCommandExecutor:
         if isinstance(cmd, str):
             cmd = shlex.split(cmd)
 
+        effective_env = get_effective_env(env)
+        if cmd:
+            resolved_bin = shutil.which(cmd[0], path=effective_env.get("PATH"))
+            if resolved_bin:
+                cmd[0] = resolved_bin
+
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             cwd=cwd,
-            env=env,
+            env=effective_env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
