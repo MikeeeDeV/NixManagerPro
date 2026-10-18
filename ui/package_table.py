@@ -72,12 +72,23 @@ class PackageTable(ctk.CTkFrame):
         )
         export_btn.pack(side="right", padx=6, pady=4)
 
+        upgrade_btn = ctk.CTkButton(
+            toolbar,
+            text="🚀  Upgrade All",
+            width=130,
+            fg_color="#27ae60",
+            hover_color="#2ecc71",
+            command=self._on_upgrade_all,
+        )
+        upgrade_btn.pack(side="right", padx=6, pady=4)
+
         uninstall_btn = ctk.CTkButton(
             toolbar, text="🗑  Uninstall Selected", width=160,
             fg_color="#c0392b", hover_color="#e74c3c",
             command=self._on_uninstall,
         )
         uninstall_btn.pack(side="right", padx=6, pady=4)
+
 
 
         # ---- treeview (standard ttk, works well inside CTk) ----------------
@@ -182,8 +193,32 @@ class PackageTable(ctk.CTkFrame):
             self._log.error("Failed to export environment: %s", exc)
             messagebox.showerror("Export Failed", f"Could not write file:\n{exc}")
 
+    def _on_upgrade_all(self) -> None:
+        if not messagebox.askyesno(
+            "Upgrade Packages",
+            "This will execute 'nix-env -u' to upgrade all packages in your profile to their latest versions.\nProceed?",
+        ):
+            return
+
+        self._log.info("User requested upgrade of all packages")
+        if self._console_cb:
+            self._console_cb("info", "Starting 'nix-env -u' upgrade process (check Console tab for progress)...")
+        self._worker.submit(self._upgrade_bg)
+
+    def _upgrade_bg(self) -> None:
+        try:
+            res = asyncio.run(self._pm.upgrade_all())
+            msg = f"✓ Upgrade finished: {res}"
+        except Exception as exc:
+            msg = f"✗ Upgrade failed: {exc}"
+            self._log.error(msg)
+
+        if self._console_cb:
+            self._console_cb("info", msg)
+        self.after(500, self.refresh)
 
     # ---- uninstall --------------------------------------------------------
+
 
     def _show_context_menu(self, event: tk.Event) -> None:
         row = self._tree.identify_row(event.y)
