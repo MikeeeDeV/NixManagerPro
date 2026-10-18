@@ -22,7 +22,7 @@ from typing import Dict, List, TYPE_CHECKING
 
 import customtkinter as ctk
 
-from core.catalog import CURATED_PACKAGES, CatalogItem, search_catalog
+from core.catalog import CURATED_PACKAGES, CatalogItem, search_catalog, get_catalog_categories
 from utils.notifications import DesktopNotifier
 
 if TYPE_CHECKING:
@@ -57,13 +57,13 @@ class InstallDialog(ctk.CTkFrame):
         top_bar.grid(row=0, column=0, sticky="ew", padx=6, pady=(0, 6))
 
         # Category filter
-        categories = ["All", "Developer Tools", "System & Shell", "Runtimes", "Networking", "Media", "Utilities"]
+        categories = get_catalog_categories()
         self._category_var = tk.StringVar(value="All")
         self._cat_menu = ctk.CTkOptionMenu(
             top_bar,
             values=categories,
             variable=self._category_var,
-            width=150,
+            width=170,
             command=lambda _v: self._on_filter(),
         )
         self._cat_menu.pack(side="left", padx=8, pady=8)
@@ -82,8 +82,8 @@ class InstallDialog(ctk.CTkFrame):
 
         upstream_btn = ctk.CTkButton(
             top_bar,
-            text="🌐 Upstream Nixpkgs",
-            width=160,
+            text="🌐 Fetch More from Nixpkgs",
+            width=180,
             command=self._on_search_upstream,
         )
         upstream_btn.pack(side="right", padx=8, pady=8)
@@ -328,12 +328,21 @@ class InstallDialog(ctk.CTkFrame):
 
     def _on_search_upstream(self) -> None:
         query = self._query_var.get().strip()
+        cat = self._category_var.get()
         if not query:
-            self._status.configure(text="Please type a package name to search upstream Nixpkgs.")
-            return
+            category_fallbacks = {
+                "Development": "editor",
+                "DevOps & Cloud": "docker",
+                "Internet & Web": "browser",
+                "Media & Audio": "media",
+                "Runtimes & Languages": "compiler",
+                "System & Shell": "terminal",
+                "Utilities": "util",
+            }
+            query = category_fallbacks.get(cat, "cli")
 
-        self._status.configure(text=f"Evaluating Nixpkgs for '{query}' (may take a moment)...")
-        self._log_terminal(f"Searching Nixpkgs for '{query}'...")
+        self._status.configure(text=f"Evaluating Nixpkgs for '{query}' (querying upstream repository)...")
+        self._log_terminal(f"Searching upstream Nixpkgs for '{query}'...")
         self._worker.submit(self._search_upstream_bg, query)
 
     def _search_upstream_bg(self, query: str) -> None:
