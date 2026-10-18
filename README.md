@@ -2,8 +2,9 @@
 
 # ❄️ NixManager Pro
 
-**The Production-Grade Desktop Manager for Nix on Linux (Non-NixOS Ubuntu)**
+**The Production-Grade, Asynchronous Desktop Control Suite for Nix on Ubuntu & Linux**
 
+[![CI / Lint & Test Suite](https://github.com/MikeeeDeV/NixManagerPro/actions/workflows/ci.yml/badge.svg)](https://github.com/MikeeeDeV/NixManagerPro/actions/workflows/ci.yml)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Nix Support](https://img.shields.io/badge/Nix-Multi--User-5277C3.svg?style=for-the-badge&logo=nixos&logoColor=white)](https://nixos.org/)
 [![Platform](https://img.shields.io/badge/Platform-Ubuntu%20%7C%20Debian%20%7C%20Linux-E95420.svg?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
@@ -11,10 +12,10 @@
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black%20%2B%20Typed-000000.svg?style=for-the-badge)](https://github.com/ambv/black)
 
 <p align="center">
-  A modern, asynchronous desktop control center built to manage your Nix packages, monitor system daemon health, inspect store disk usage, and trigger zero-latency garbage collection with a live real-time terminal output stream.
+  A high-performance, non-blocking desktop client built to manage Nix packages, browse generation timelines with atomic rollbacks, configure upstream channels, export reproducible <code>shell.nix</code> environments, and monitor system daemon health with zero UI freezing.
 </p>
 
-[Key Features](#-key-features) • [Architecture](#-architecture) • [Getting Started](#-getting-started) • [Usage Guide](#-usage-guide) • [Configuration](#-configuration) • [Troubleshooting](#-troubleshooting) • [Contributing](#-contributing)
+[Key Features](#-key-features) • [Architecture](#-architecture) • [Desktop Installation](#-desktop-installation) • [Getting Started](#-getting-started) • [Usage Guide](#-usage-guide) • [Configuration](#-configuration) • [Contributing](#-contributing)
 
 ---
 
@@ -22,32 +23,36 @@
 
 ## 📌 Overview
 
-Running the **Nix Package Manager** on standard Ubuntu or Debian distributions provides declarative, reproducible package isolation alongside `apt`. However, managing multi-user environments, inspecting daemon health (`nix-daemon.service`), tracking `/nix/store` disk consumption, and parsing raw CLI outputs can be cumbersome.
+Running the **Nix Package Manager** on multi-user Ubuntu or Debian installations provides declarative package isolation alongside native `apt`. However, managing transactions, reverting bad packages, tracking disk consumption across `/nix/store`, and editing channels via pure CLI can be challenging.
 
-**NixManager Pro** bridges this gap by delivering a lightweight, responsive, and reliable GUI. Engineered with clean separation of concerns:
-- **Zero UI Freezing:** Background tasks run on dedicated thread pools with thread-safe event dispatching.
-- **Live CLI Streaming:** Real-time stdout/stderr capture with color-coded log streams.
-- **Robust Error Handling:** Comprehensive domain exceptions and non-zero process recovery.
-- **Native Multi-User Readiness:** Designed specifically for non-NixOS Linux installations.
+**NixManager Pro** transforms the Nix experience into a state-of-the-art desktop tool:
+- **⚡ Atomic Generations & Rollback:** Browse historical states and revert transactions with one click.
+- **📡 Channels Manager:** Inspect, subscribe, remove, and pull updates from upstream Nix channels.
+- **📤 Declarative Exporter:** Generate reproducible `shell.nix` or JSON manifests from installed software.
+- **🚀 One-Click Upgrades:** Upgrade every installed package via `nix-env -u` with live terminal streaming.
+- **🔔 Native Desktop Notifications:** System toast alerts via `libnotify` when lengthy builds or cleanups complete.
+- **🎨 Dynamic Theme Engine:** Switch between Dark, Light, and System themes on the fly.
+- **🐧 Full Ubuntu Integration:** Ships with vector SVG icon and automated `.desktop` launcher installer.
 
 ---
 
 ## ✨ Key Features
 
-| Capability | Technical Details | User Benefit |
+| Capability | Module | User Benefit |
 |---|---|---|
-| **📊 Real-Time Dashboard** | Monitors `systemctl is-active nix-daemon.service`, `nix-store --print-stats`, and active channels | Instant visibility into system daemon health and storage metrics |
-| **📦 Installed Packages Table** | Parses `nix-env -q`, displays name and version with Treeview styling | View all installed tools and trigger clean single or batch uninstalls |
-| **🔍 Search & Installer** | Interactive search querying `nix-env -qaP` asynchronously | Discover Nix packages by attribute path and install with one click |
-| **🖥️ Live Console Stream** | Subprocess pipe hooks streaming lines via `asyncio.StreamReader` | Observe real-time compilation, download progress, and GC execution |
-| **🧹 One-Click GC** | Safe dispatch of `nix-store --gc` on background workers | Reclaim gigabytes of orphaned store derivations without locking the desktop |
-| **📜 Centralized Logging** | 5 MiB rotating file logger (`logs/nixmanager.log`) + console handler | Enterprise-ready diagnostic audit trails for every operation |
+| **📊 System Telemetry** | `core/diagnostics.py` | Live `nix-daemon.service` status, uptime, store disk size, and channel inspection. |
+| **⏱️ Generations & Rollback** | `core/generations.py` | Visual timeline of all package transactions with instant rollback (`--rollback`) and generation switching. |
+| **📦 Package Manager & Upgrades** | `core/package_manager.py` | List installed packages, execute single or batch uninstalls, and run one-click upgrades (`nix-env -u`). |
+| **📡 Channels Manager** | `core/channels.py` | Add custom nixpkgs channels, remove subscriptions, and trigger live updates (`nix-channel --update`). |
+| **📤 Declarative Exporter** | `core/exporter.py` | Turn currently installed CLI & GUI tools into a reproducible `shell.nix` with `pkgs.mkShell`. |
+| **🔍 Search & Installer** | `ui/install_dialog.py` | Query available derivations asynchronously via `nix-env -qaP` and install in background. |
+| **🖥️ Live Console Stream** | `ui/console_log.py` | Real-time color-coded stdout/stderr output with automatic autoscroll and timestamp tags. |
+| **🧹 Safe Garbage Collection** | `core/package_manager.py` | Purge unreferenced store derivations (`nix-store --gc`) or historic generations without locking the desktop. |
+| **🔔 Desktop Notifications** | `utils/notifications.py` | Sends Ubuntu system toast alerts when background installations or cleanups finish. |
 
 ---
 
-## 🏛️ Architecture & Project Structure
-
-NixManager Pro enforces strict decoupling across three specialized tiers:
+## 🏛️ System Architecture
 
 ```mermaid
 graph TD
@@ -57,123 +62,127 @@ graph TD
     Utils -.-> UI
     Utils -.-> Core
 
-    subgraph "Core Services"
+    subgraph "Core Services (core/)"
         CE[command_executor.py<br/>Async Pipe Streamer]
-        PM[package_manager.py<br/>Nix Env & Store Façade]
+        PM[package_manager.py<br/>Package CRUD & Upgrade]
+        GEN[generations.py<br/>Generations & Rollback]
+        CHAN[channels.py<br/>Nix Channel Manager]
+        EXP[exporter.py<br/>Declarative shell.nix Generator]
         DG[diagnostics.py<br/>Daemon & Storage Inspector]
     end
 
-    subgraph "UI Modules"
-        APP[app.py<br/>Root Container]
-        DASH[dashboard.py<br/>Metrics & Overview]
-        PKGT[package_table.py<br/>Installed Manager]
-        INST[install_dialog.py<br/>Package Search & Install]
-        CONS[console_log.py<br/>Real-Time Terminal]
+    subgraph "Presentation Layer (ui/)"
+        APP[app.py<br/>Root Container & Theme Switcher]
+        DASH[dashboard.py<br/>Telemetry Cards & GC]
+        PKGT[package_table.py<br/>Installed Packages & Exporter]
+        GENV[generations_view.py<br/>Timeline & Rollback Action Bar]
+        CHANV[channels_view.py<br/>Channel Subscriptions & Updater]
+        INST[install_dialog.py<br/>Search & Install Panel]
+        CONS[console_log.py<br/>Color-coded Real-time Stream]
     end
 
-    subgraph "Utility Tier"
-        WORK[worker.py<br/>Thread-Safe Worker Pool]
-        LOGG[logger.py<br/>Rotating File Logger]
-        CONF[config.py<br/>Typed Dataclass Config]
+    subgraph "Utility Tier (utils/)"
+        WORK[worker.py<br/>ThreadPool Worker]
+        NOTIF[notifications.py<br/>FreeDesktop Toasts]
+        LOGG[logger.py<br/>5 MiB Rotating File Logger]
+        CONF[config.py<br/>Typed JSON Configuration]
     end
-```
-
-### Directory Layout
-
-```
-NixManagerPro/
-├── main.py                    # Application bootstrap & top-level exception handler
-├── requirements.txt           # Minimal pinned dependencies (CustomTkinter)
-├── pyrightconfig.json         # Strict language server & typing rules
-├── README.md                  # Complete product documentation
-│
-├── core/                      # Core Nix & OS integration tier
-│   ├── __init__.py
-│   ├── command_executor.py    # Async subprocess wrapper with live stream hooks
-│   ├── package_manager.py     # High-level Nix operations (install, uninstall, search, GC)
-│   └── diagnostics.py         # Systemd daemon status, store disk usage, channels
-│
-├── ui/                        # Presentation tier (CustomTkinter)
-│   ├── __init__.py
-│   ├── app.py                 # Root CTk window & dependency injection container
-│   ├── dashboard.py           # Metric status cards, action bar, and integrated table
-│   ├── package_table.py       # Installed packages Treeview with context menu actions
-│   ├── install_dialog.py      # Async package search & attribute-path installer
-│   └── console_log.py         # Terminal output area with stream-colored tags
-│
-└── utils/                     # Concurrency, configuration, and logging tier
-    ├── __init__.py
-    ├── worker.py              # ThreadPoolWorker with queue-based dispatch
-    ├── logger.py              # Rotating file handler (5 MiB x 3) + stderr streamer
-    └── config.py              # JSON configuration schema with fallback defaults
 ```
 
 ---
 
-## 🚀 Getting Started
+## 🐧 Desktop Installation (Ubuntu / Debian)
 
-### Prerequisites
-
-1. **Linux OS**: Ubuntu 20.04+, Debian 11+, or any systemd-based Linux distribution.
-2. **Python 3.10+**: With Tkinter installed:
-   ```bash
-   sudo apt update && sudo apt install -y python3 python3-venv python3-tk
-   ```
-3. **Nix Multi-User Setup**:
-   ```bash
-   sh <(curl -L https://nixos.org/nix/install) --daemon
-   ```
-
-### Installation
-
-Clone the repository and prepare your isolated virtual environment:
+To integrate NixManager Pro directly into your Ubuntu Application Launcher (Dash) without opening a terminal:
 
 ```bash
-# 1. Clone repository
+# Clone the repository
 git clone https://github.com/MikeeeDeV/NixManagerPro.git
 cd NixManagerPro
 
-# 2. Create and activate a Python virtual environment
+# Set up Python environment
 python3 -m venv .venv
 source .venv/bin/activate
-
-# 3. Install dependencies
-pip install --upgrade pip
 pip install -r requirements.txt
 
-# 4. Launch NixManager Pro
+# Run the automated desktop launcher installer
+./install-desktop.sh
+```
+
+🎉 **NixManager Pro** will immediately appear in your Ubuntu App Grid under **System > Package Management**!
+
+---
+
+## 🚀 Quick Start (Manual Execution)
+
+```bash
+# 1. Activate environment
+source .venv/bin/activate
+
+# 2. Launch application
 python main.py
 ```
 
 ---
 
-## 💻 Usage Guide
+## 💻 Usage & Tab Breakdown
 
-### 1. System Health & Dashboard
-Launch the app to immediately view three real-time telemetry cards:
-- **Daemon Indicator**: Displays `🟢 active` if `nix-daemon.service` is operational.
-- **Store Size**: Automatically measures the total size of `/nix/store`.
-- **Channel Info**: Displays currently registered channels (e.g. `nixpkgs`).
+### 1. 📊 Dashboard
+- Real-time indicator for `nix-daemon.service` health.
+- Store disk usage and channel summaries.
+- One-click **Garbage Collection (`nix-store --gc`)** to reclaim disk space safely.
 
-### 2. Package Management
-- **View Installed Packages**: Automatically loads your active environment's packages (`nix-env -q`).
-- **Uninstalling**: Select one or more packages in the list, right-click, and select **Uninstall** (or click the red toolbar button). A confirmation dialog safeguards against accidental removal.
+### 2. 📦 Packages & Export
+- View all installed packages and their versions.
+- **🚀 Upgrade All**: Upgrades every installed derivation to the latest available upstream release.
+- **📤 Export shell.nix**: Generates a shareable, declarative Nix expression reproducing your exact environment.
+- **🗑 Uninstall**: Single or multi-selection package removal with confirmation prompts.
 
-### 3. Searching and Installing
-- Navigate to the **⬇ Install** tab.
-- Type any query (e.g., `ripgrep`, `htop`, `neovim`, `zsh`) and press Enter.
-- Select the desired package attribute path (e.g. `nixpkgs.ripgrep`) and click **Install Selected**.
-- Switch to the **🖥 Console** tab to observe live download and build output.
+### 3. ⏱️ Generations & Instant Rollback
+- Displays all historical profile states created by transactions.
+- Highlights the currently active `(current)` generation.
+- **⚡ Instant Rollback**: Reverts your entire environment to the state prior to your last change.
+- **Switch to Selected**: Jump backward or forward to any historical generation.
+- **🧹 Delete Old**: Purge outdated generations to free up disk storage.
 
-### 4. Garbage Collection
-- Click **🧹 Garbage Collect** on the Dashboard.
-- Dead links and unreferenced store paths are purged cleanly in the background without UI hangs.
+### 4. 📡 Channels Manager
+- View registered channels (e.g. `nixpkgs`, `nixos-unstable`).
+- Subscribe to new channel URLs with one click.
+- **⬇ Update All Channels**: Pull latest channel definitions with real-time download output.
+
+### 5. ⬇ Search & Install
+- Search packages across the entire Nix repository asynchronously.
+- Inspect attribute paths (e.g. `nixpkgs.ripgrep`, `nixpkgs.neovim`).
+- Install with automated desktop toast notifications on completion.
+
+### 6. 🖥 Console
+- Dedicated terminal view color-coding stdout (`green`) and stderr (`red`).
+- Monospaced timestamped log stream providing complete audit visibility.
 
 ---
 
-## ⚙️ Configuration
+## 🧪 Testing & Continuous Integration
 
-Custom settings can be defined in a `config.json` file in the root folder:
+NixManager Pro includes a comprehensive test suite executed on every commit and PR across Python 3.10–3.13 via GitHub Actions:
+
+```bash
+# Run unit tests locally
+pytest tests/ -v
+```
+
+```
+tests/test_command_executor.py::test_successful_command_execution PASSED
+tests/test_command_executor.py::test_command_streaming_callback PASSED
+tests/test_command_executor.py::test_failed_command_raises_error PASSED
+tests/test_exporter.py::test_generate_shell_nix PASSED
+tests/test_generations.py::test_parse_generations_list PASSED
+```
+
+---
+
+## ⚙️ Configuration Schema
+
+NixManager Pro reads `config.json` from the project root:
 
 ```json
 {
@@ -182,98 +191,20 @@ Custom settings can be defined in a `config.json` file in the root folder:
   "theme_mode": "Dark",
   "colour_theme": "blue",
   "window_width": 1280,
-  "window_height": 820
+  "window_height": 820,
+  "export_manifest_path": "installed_manifest.json"
 }
 ```
-
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `max_worker_threads` | `int` | `4` | Concurrency limit for background operations |
-| `log_level` | `str` | `"DEBUG"` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
-| `theme_mode` | `str` | `"Dark"` | CustomTkinter appearance (`Dark`, `Light`, `System`) |
-| `colour_theme` | `str` | `"blue"` | Accent palette theme (`blue`, `green`, `dark-blue`) |
-| `window_width` | `int` | `1280` | Initial window width in pixels |
-| `window_height` | `int` | `820` | Initial window height in pixels |
-
----
-
-## 🛡️ Non-Blocking Architecture & Concurrency Model
-
-A core architectural pillar of NixManager Pro is strict prevention of UI thread blocking:
-
-```
-[ User Action ]
-      │
-      ▼
-( UI Thread - CustomTkinter )
-      │
-      ├─► worker.submit(task) ──► [ WorkerPool Queue ]
-      │                                 │
-      │                                 ▼
-      │                     ( Worker Thread Execution )
-      │                                 │
-      │                                 ├─► asyncio.run(pm.install(...))
-      │                                 │         │
-      │                                 │         ▼
-      │                                 │   [ AsyncCommandExecutor ]
-      │                                 │         │
-      │                                 │         ├─► readline() ──► callback()
-      │                                 │                               │
-      │                                 ▼                               ▼
-      └◄── widget.after(0, update_ui) ◄─────────────────────────────────┘
-```
-
-1. **User interaction** immediately hands off execution to `WorkerPool`.
-2. **Worker threads** execute `asyncio.run()` with the asynchronous command pipeline.
-3. As `nix` outputs lines, the `set_output_callback` hook intercepts each line.
-4. The callback schedules updates safely onto the main thread via Tkinter's `after(0, ...)`.
-
----
-
-## 🔧 Troubleshooting
-
-<details>
-<summary><b>1. Nix daemon is reported as inactive or not found</b></summary>
-
-Verify the status of the daemon via terminal:
-```bash
-systemctl status nix-daemon.service
-```
-If not running:
-```bash
-sudo systemctl start nix-daemon.service
-sudo systemctl enable nix-daemon.service
-```
-</details>
-
-<details>
-<summary><b>2. Permission denied on /nix/store operations</b></summary>
-
-Ensure your user belongs to the `nix-users` group or has access to the nix-daemon socket:
-```bash
-sudo usermod -aG nix-users $USER
-```
-Then log out and log back in for changes to take effect.
-</details>
-
-<details>
-<summary><b>3. Missing tkinter on Ubuntu</b></summary>
-
-Install the python3-tk package:
-```bash
-sudo apt install python3-tk
-```
-</details>
 
 ---
 
 ## 🤝 Contributing
 
-Contributions, issue reports, and feature requests are welcome!
+Pull requests, feature requests, and bug reports are welcome!
 
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'feat: Add some AmazingFeature'`)
+3. Commit your Changes (`git commit -m 'feat: Add AmazingFeature'`)
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
@@ -281,10 +212,10 @@ Contributions, issue reports, and feature requests are welcome!
 
 ## 📄 License
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
+Distributed under the **MIT License**. See `LICENSE` for details.
 
 ---
 
 <div align="center">
-  Crafted with care for the Linux & Nix Community by <b>MikeeeDeV</b>
+  Engineered with pride for the Linux & Nix communities by <b><a href="https://github.com/MikeeeDeV">MikeeeDeV</a></b>
 </div>
