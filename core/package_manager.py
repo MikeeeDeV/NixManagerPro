@@ -179,7 +179,7 @@ class NixPackageManager:
             ) from exc
 
     async def uninstall_generic(self, pkg: PackageInfo) -> None:
-        """Uninstall package using its native package manager (Nix, Flatpak, or Snap)."""
+        """Standard uninstall using native package manager (retains user configs)."""
         try:
             if pkg.source == "Flatpak":
                 target = pkg.app_id or pkg.name
@@ -191,6 +191,81 @@ class NixPackageManager:
         except CommandError as exc:
             raise PackageOperationError(
                 f"Failed to uninstall {pkg.source} package '{pkg.name}': {exc}"
+            ) from exc
+
+    async def purge_generic(self, pkg: PackageInfo) -> str:
+        """
+        Deep Purge (مسح نهائي): completely eradicates the package, its user configurations,
+        application cache, desktop entries, and runs store garbage collection.
+        """
+        import os
+        import shutil
+
+        log_messages: List[str] = []
+        name = pkg.name
+        home = os.path.expanduser("~")
+
+        try:
+            if pkg.source == "Snap":
+                await self._exec.run(f"snap remove --purge {name}")
+                log_messages.append(f"✓ Removed snap package with --purge flag: {name}")
+                snap_dir = os.path.join(home, "snap", name)
+                if os.path.exists(snap_dir):
+                    shutil.rmtree(snap_dir, ignore_errors=True)
+                    log_messages.append(f"✓ Cleaned snap data directory: {snap_dir}")
+
+            elif pkg.source == "Flatpak":
+                target = pkg.app_id or name
+                await self._exec.run(f"flatpak uninstall --delete-data -y {target}")
+                log_messages.append(f"✓ Removed flatpak with --delete-data: {target}")
+                var_dir = os.path.join(home, ".var", "app", target)
+                if os.path.exists(var_dir):
+                    shutil.rmtree(var_dir, ignore_errors=True)
+                    log_messages.append(f"✓ Purged flatpak app data: {var_dir}")
+
+            else:
+                # Nix Package Deep Purge
+                await self._exec.run(f"nix-env -e {name}")
+                log_messages.append(f"✓ Removed {name} from active Nix profile")
+
+                # Purge user directories
+                user_dirs = [
+                    os.path.join(home, ".config", name),
+                    os.path.join(home, ".cache", name),
+                    os.path.join(home, ".local", "share", name),
+                ]
+                for udir in user_dirs:
+                    if os.path.exists(udir):
+                        shutil.rmtree(udir, ignore_errors=True)
+                        log_messages.append(f"✓ Purged user directory: {udir}")
+
+                # Remove desktop launcher
+                apps_dir = os.path.join(home, ".local", "share", "applications")
+                if os.path.isdir(apps_dir):
+                    for f in os.listdir(apps_dir):
+                        if f.startswith(name) and f.endswith(".desktop"):
+                            try:
+                                os.remove(os.path.join(apps_dir, f))
+                                log_messages.append(f"✓ Removed desktop launcher: {f}")
+                            except Exception:
+                                pass
+
+                # Deep store garbage collection
+                try:
+                    await self._exec.run("nix-collect-garbage -d")
+                    log_messages.append("✓ Executed deep Nix store garbage collection (nix-collect-garbage -d)")
+                except Exception:
+                    try:
+                        await self._exec.run("nix-store --gc")
+                        log_messages.append("✓ Store garbage collection finished")
+                    except Exception:
+                        pass
+
+            return "\n".join(log_messages)
+
+        except CommandError as exc:
+            raise PackageOperationError(
+                f"Failed to deep purge {pkg.source} package '{pkg.name}': {exc}"
             ) from exc
 
     async def upgrade_all(self) -> str:
