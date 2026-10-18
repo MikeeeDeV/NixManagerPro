@@ -10,4 +10,4 @@ Terminal=false
 Categories=System;Settings;PackageManager;
 Keywords=nix;nixos;package;manager;store;software;
 StartupNotify=true
-StartupWMClass=NixManager Pro
+StartupWMClass=nixmanager

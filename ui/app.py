@@ -9,6 +9,8 @@ seamless view switching, and dynamic theme support.
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 import webbrowser
 import tkinter as tk
 from typing import Dict, Optional
@@ -40,7 +42,7 @@ class NixManagerApp(ctk.CTk):
     """
 
     def __init__(self, config: AppConfig | None = None) -> None:
-        super().__init__()
+        super().__init__(className="nixmanager")
 
         self.cfg = config or load_config()
         self.logger = get_logger(self.cfg.log_level)
@@ -49,6 +51,16 @@ class NixManagerApp(ctk.CTk):
         ctk.set_appearance_mode(self.cfg.theme_mode)
         ctk.set_default_color_theme(self.cfg.colour_theme)
         self.title("NixManager Pro — Nix Desktop Software Center")
+
+        # Load window icon for X11/Wayland/GNOME taskbars
+        icon_path = Path(__file__).resolve().parent.parent / "assets" / "nixmanager.png"
+        if icon_path.exists():
+            try:
+                self._app_icon = tk.PhotoImage(file=str(icon_path))
+                self.iconphoto(True, self._app_icon)
+            except Exception:
+                pass
+
         self.geometry(f"{max(self.cfg.window_width, 1180)}x{max(self.cfg.window_height, 760)}")
         self.minsize(980, 640)
 
