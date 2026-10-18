@@ -90,10 +90,21 @@ class PackageTable(ctk.CTkFrame):
         )
         refresh_btn.pack(side="right", padx=4, pady=4)
 
+        restore_btn = ctk.CTkButton(
+            toolbar,
+            text="📥  Restore Stack",
+            width=120,
+            height=28,
+            fg_color="#2980b9",
+            hover_color="#3498db",
+            command=self._on_restore,
+        )
+        restore_btn.pack(side="right", padx=4, pady=4)
+
         export_btn = ctk.CTkButton(
             toolbar,
-            text="📤  Export shell.nix",
-            width=130,
+            text="💾  Export Stack",
+            width=120,
             height=28,
             fg_color="#8e44ad",
             hover_color="#9b59b6",
@@ -241,21 +252,17 @@ class PackageTable(ctk.CTkFrame):
             return
 
         nix_pkgs = [p for p in self._cached_packages if p.source == "Nix"]
-        if not nix_pkgs:
-            messagebox.showinfo(
-                "Export Declarative Environment",
-                "Exporting 'shell.nix' requires Nix packages.\n\n"
-                "Your currently detected installed packages are managed via Snap/Flatpak.",
-            )
+        if not self._cached_packages:
+            messagebox.showinfo("Export Stack", "No installed packages detected to export.")
             return
 
         file_path = filedialog.asksaveasfilename(
             parent=self,
-            title="Export Declarative Nix Environment",
-            initialfile="shell.nix",
+            title="Export Software Stack",
+            initialfile="nixmanager-stack.json",
             filetypes=[
+                ("JSON Stack Manifest (*.json)", "*.json"),
                 ("Nix Shell Expression (*.nix)", "*.nix"),
-                ("JSON Package Manifest (*.json)", "*.json"),
                 ("All Files (*.*)", "*.*"),
             ],
         )
@@ -264,17 +271,79 @@ class PackageTable(ctk.CTkFrame):
             return
 
         try:
-            saved_path = NixEnvironmentExporter.export_to_file(nix_pkgs, file_path)
-            self._log.info("Exported environment manifest to: %s", saved_path)
+            # If exporting .nix, use nix pkgs only; if JSON, export full multi-manager stack
+            pkgs_to_export = [p for p in self._cached_packages if p.source.lower() == "nix"] if file_path.endswith(".nix") else self._cached_packages
+            saved_path = NixEnvironmentExporter.export_to_file(pkgs_to_export, file_path)
+            self._log.info("Exported software stack to: %s", saved_path)
             if self._console_cb:
-                self._console_cb("info", f"✓ Environment exported to: {saved_path}")
+                self._console_cb("info", f"✓ Software stack ({len(pkgs_to_export)} apps) exported to: {saved_path}")
             messagebox.showinfo(
                 "Export Successful",
-                f"Declarative environment successfully generated!\n\nLocation:\n{saved_path}\n\nYou can run 'nix-shell' inside that directory to recreate this exact environment.",
+                f"Software stack successfully exported!\n\nLocation:\n{saved_path}\n\nTotal packages saved: {len(pkgs_to_export)}",
             )
         except Exception as exc:
-            self._log.error("Failed to export environment: %s", exc)
+            self._log.error("Failed to export stack: %s", exc)
             messagebox.showerror("Export Failed", f"Could not write file:\n{exc}")
+
+    def _on_restore(self) -> None:
+        """Import and batch-restore a previously exported software stack manifest."""
+        file_path = filedialog.askopenfilename(
+            parent=self,
+            title="Select Software Stack Manifest to Restore",
+            filetypes=[
+                ("JSON Stack Manifest (*.json)", "*.json"),
+                ("All Files (*.*)", "*.*"),
+            ],
+        )
+        if not file_path:
+            return
+
+        try:
+            packages = NixEnvironmentExporter.import_from_file(file_path)
+            if not packages:
+                messagebox.showwarning("Empty Stack", "No package entries found in the selected manifest.")
+                return
+
+            preview_lines = [f"• {p.name} [{p.source}]" for p in packages[:15]]
+            if len(packages) > 15:
+                preview_lines.append(f"... and {len(packages) - 15} more.")
+
+            prompt = (
+                f"Software Stack Restoration:\n\n"
+                f"Found {len(packages)} packages to restore.\n\n"
+                + "\n".join(preview_lines)
+                + "\n\nDo you want to proceed with batch restoration now?"
+            )
+
+            if not messagebox.askyesno("Confirm Batch Restoration", prompt):
+                return
+
+            if self._console_cb:
+                self._console_cb("info", f"Starting batch restoration of {len(packages)} packages from {file_path}...")
+
+            async def _do_restore():
+                def _prog(msg):
+                    if self._console_cb:
+                        self._console_cb("info", msg)
+                return await NixEnvironmentExporter.restore_stack(packages, self._pm, progress_cb=_prog)
+
+            def _on_done(results):
+                msg = f"✓ Batch restoration finished! Processed {len(results)} package(s)."
+                if self._console_cb:
+                    self._console_cb("info", msg)
+                DesktopNotifier.info("Restoration Complete", f"Successfully restored {len(results)} package(s).")
+                self.refresh()
+
+            def _on_err(err):
+                self._log.error("Restore failed: %s", err)
+                if self._console_cb:
+                    self._console_cb("stderr", f"✗ Batch restoration error: {err}")
+
+            self._worker.submit_async(_do_restore, on_success=_on_done, on_error=_on_err)
+
+        except Exception as exc:
+            self._log.error("Failed to load stack: %s", exc)
+            messagebox.showerror("Import Error", f"Failed to read stack manifest:\n{exc}")
 
     def _on_upgrade_all(self) -> None:
         if not messagebox.askyesno(
