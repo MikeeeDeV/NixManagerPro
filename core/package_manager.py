@@ -206,7 +206,7 @@ class NixPackageManager:
 
     async def purge_generic(self, pkg: PackageInfo) -> str:
         """
-        Deep Purge (مسح نهائي): completely eradicates the package, its user configurations,
+        Deep Purge: completely eradicates the package, its user configurations,
         application cache, desktop entries, and runs store garbage collection.
         """
         import os

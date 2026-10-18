@@ -11,10 +11,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import ttk
 from typing import TYPE_CHECKING, List
 
 import customtkinter as ctk
+
+from .modern_dialog import show_alert_dialog, show_confirm_dialog
 
 if TYPE_CHECKING:
     from core.generations import GenerationInfo, NixGenerationManager
@@ -149,10 +151,14 @@ class GenerationsView(ctk.CTkFrame):
         self._status_lbl.configure(text=f"Total Generations: {len(gens)}")
 
     def _on_rollback(self) -> None:
-        if not messagebox.askyesno(
-            "Confirm Rollback",
-            "Are you sure you want to rollback to the previous generation?",
-        ):
+        confirmed = show_confirm_dialog(
+            parent=self,
+            title="Confirm Rollback",
+            message="Are you sure you want to rollback to the previous profile generation?",
+            confirm_text="Rollback",
+            cancel_text="Cancel",
+        )
+        if not confirmed:
             return
 
         self._log.info("User requested generation rollback")
@@ -177,14 +183,18 @@ class GenerationsView(ctk.CTkFrame):
     def _on_switch(self) -> None:
         sel = self._tree.selection()
         if not sel:
-            messagebox.showinfo("Select Generation", "Please select a generation from the table.")
+            show_alert_dialog(self, "Select Generation", "Please select a generation from the table.", alert_type="info")
             return
 
         gen_id = int(sel[0])
-        if not messagebox.askyesno(
-            "Confirm Switch",
-            f"Switch active profile to Generation #{gen_id}?",
-        ):
+        confirmed = show_confirm_dialog(
+            parent=self,
+            title="Confirm Switch",
+            message=f"Switch active profile to Generation #{gen_id}?",
+            confirm_text="Switch Generation",
+            cancel_text="Cancel",
+        )
+        if not confirmed:
             return
 
         self._log.info("Switching to generation %d", gen_id)
@@ -206,10 +216,15 @@ class GenerationsView(ctk.CTkFrame):
         self.after(0, self._action_complete)
 
     def _on_purge_old(self) -> None:
-        if not messagebox.askyesno(
-            "Purge Old Generations",
-            "This will delete all historic generations except the currently active one.\nProceed?",
-        ):
+        confirmed = show_confirm_dialog(
+            parent=self,
+            title="Purge Historic Generations",
+            message="This will delete all historical generations except the currently active one.",
+            danger=True,
+            confirm_text="Purge Old",
+            cancel_text="Cancel",
+        )
+        if not confirmed:
             return
 
         self._log.info("Purging old generations")
