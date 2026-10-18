@@ -30,6 +30,7 @@ from .dashboard import Dashboard
 from .generations_view import GenerationsView
 from .install_dialog import InstallDialog
 from .package_table import PackageTable
+from .updates_view import UpdatesView
 
 
 
@@ -85,7 +86,7 @@ class NixManagerApp(ctk.CTk):
 
         ver_badge = ctk.CTkLabel(
             brand_frame,
-            text="PRO v1.4.0",
+            text="PRO v1.6.0",
             font=ctk.CTkFont(size=10, weight="bold"),
             fg_color="#3498db",
             text_color="#ffffff",
@@ -173,11 +174,10 @@ class NixManagerApp(ctk.CTk):
         )
         self._views["discover"] = self.discover_view
 
-        # 3. Updates & Health Dashboard
-        self.updates_view = Dashboard(
+        # 3. Dedicated Updates Center (WingetUI-style)
+        self.updates_view = UpdatesView(
             master=self.content_container,
             pkg_manager=self.pkg_manager,
-            diagnostics=self.diagnostics,
             worker=self.worker,
             logger=self.logger,
             console_cb=self.console_view.append_line,
