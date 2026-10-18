@@ -228,15 +228,6 @@ class PackageTable(ctk.CTkFrame):
             messagebox.showinfo("Export", "No installed packages found to export.")
             return
 
-        file_path = filedialog.asksaveasfilename(
-            parent=self,
-            title="Export Declarative Nix Environment",
-            initialfile="shell.nix",
-            filetypes=[
-                ("Nix Shell Expression (*.nix)", "*.nix"),
-                ("JSON Package Manifest (*.json)", "*.json"),
-                ("All Files (*.*)", "*.*"),
-            ],
         nix_pkgs = [p for p in self._cached_packages if p.source == "Nix"]
         if not nix_pkgs:
             messagebox.showinfo(
