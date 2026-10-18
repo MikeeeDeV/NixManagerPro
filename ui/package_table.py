@@ -51,45 +51,77 @@ class PackageTable(ctk.CTkFrame):
         self.grid_rowconfigure(1, weight=1)
 
         # ---- toolbar -------------------------------------------------------
-        toolbar = ctk.CTkFrame(self, height=40)
+        toolbar = ctk.CTkFrame(self, height=44)
         toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 4))
 
-        self._count_lbl = ctk.CTkLabel(toolbar, text="Packages: –")
+        self._count_lbl = ctk.CTkLabel(
+            toolbar,
+            text="Packages: –",
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
         self._count_lbl.pack(side="left", padx=10)
 
-        refresh_btn = ctk.CTkButton(
-            toolbar, text="⟳  Refresh", width=110, command=self.refresh,
+        # Search bar
+        self._search_var = tk.StringVar()
+        self._search_var.trace_add("write", lambda *_: self._apply_filter())
+        self._search_entry = ctk.CTkEntry(
+            toolbar,
+            textvariable=self._search_var,
+            placeholder_text="🔍  Filter installed...",
+            width=180,
+            height=28,
         )
-        refresh_btn.pack(side="right", padx=6, pady=4)
+        self._search_entry.pack(side="left", padx=6, pady=4)
+
+        # Source filter
+        self._source_filter_var = tk.StringVar(value="All Sources")
+        self._source_menu = ctk.CTkOptionMenu(
+            toolbar,
+            variable=self._source_filter_var,
+            values=["All Sources", "Nix ❄️", "Snap 📦", "Flatpak 🚀"],
+            width=130,
+            height=28,
+            command=lambda _: self._apply_filter(),
+        )
+        self._source_menu.pack(side="left", padx=4, pady=4)
+
+        refresh_btn = ctk.CTkButton(
+            toolbar, text="⟳  Refresh", width=90, height=28, command=self.refresh,
+        )
+        refresh_btn.pack(side="right", padx=4, pady=4)
 
         export_btn = ctk.CTkButton(
             toolbar,
             text="📤  Export shell.nix",
-            width=150,
+            width=130,
+            height=28,
             fg_color="#8e44ad",
             hover_color="#9b59b6",
             command=self._on_export,
         )
-        export_btn.pack(side="right", padx=6, pady=4)
+        export_btn.pack(side="right", padx=4, pady=4)
 
         upgrade_btn = ctk.CTkButton(
             toolbar,
             text="🚀  Upgrade All",
-            width=130,
+            width=110,
+            height=28,
             fg_color="#27ae60",
             hover_color="#2ecc71",
             command=self._on_upgrade_all,
         )
-        upgrade_btn.pack(side="right", padx=6, pady=4)
+        upgrade_btn.pack(side="right", padx=4, pady=4)
 
         uninstall_btn = ctk.CTkButton(
-            toolbar, text="🗑  Uninstall Selected", width=160,
-            fg_color="#c0392b", hover_color="#e74c3c",
+            toolbar,
+            text="🗑  Uninstall",
+            width=110,
+            height=28,
+            fg_color="#c0392b",
+            hover_color="#e74c3c",
             command=self._on_uninstall,
         )
-        uninstall_btn.pack(side="right", padx=6, pady=4)
-
-
+        uninstall_btn.pack(side="right", padx=4, pady=4)
 
         # ---- treeview (standard ttk, works well inside CTk) ----------------
         style = ttk.Style()
@@ -117,15 +149,17 @@ class PackageTable(ctk.CTkFrame):
 
         self._tree = ttk.Treeview(
             tree_frame,
-            columns=("name", "version"),
+            columns=("name", "version", "source"),
             show="headings",
             style="Pkg.Treeview",
             selectmode="extended",
         )
         self._tree.heading("name", text="Package Name")
         self._tree.heading("version", text="Version")
-        self._tree.column("name", width=400, anchor="w")
-        self._tree.column("version", width=160, anchor="center")
+        self._tree.heading("source", text="Manager / Source")
+        self._tree.column("name", width=340, anchor="w")
+        self._tree.column("version", width=140, anchor="center")
+        self._tree.column("source", width=130, anchor="center")
         self._tree.grid(row=0, column=0, sticky="nsew")
 
         vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self._tree.yview)
@@ -140,7 +174,7 @@ class PackageTable(ctk.CTkFrame):
     # ---- public API -------------------------------------------------------
 
     def refresh(self) -> None:
-        """Queue a background reload of the installed packages list."""
+        """Queue a background reload of all installed packages across Nix, Snap, and Flatpak."""
         self._count_lbl.configure(text="Packages: loading…")
         self._worker.submit(self._fetch_packages)
 
@@ -148,7 +182,7 @@ class PackageTable(ctk.CTkFrame):
 
     def _fetch_packages(self) -> None:
         try:
-            pkgs = asyncio.run(self._pm.list_installed())
+            pkgs = asyncio.run(self._pm.list_all_installed())
         except Exception as exc:
             self._log.error("Failed to list installed packages: %s", exc)
             pkgs = []
@@ -156,14 +190,60 @@ class PackageTable(ctk.CTkFrame):
 
     def _populate(self, pkgs: List[PackageInfo]) -> None:
         self._cached_packages = pkgs
+        self._apply_filter()
+
+    def _apply_filter(self) -> None:
+        query = self._search_var.get().strip().lower()
+        source_filter = self._source_filter_var.get()
+
         self._tree.delete(*self._tree.get_children())
-        for p in pkgs:
-            self._tree.insert("", "end", iid=p.name, values=(p.name, p.version))
-        self._count_lbl.configure(text=f"Packages: {len(pkgs)}")
+        visible_count = 0
+
+        for p in self._cached_packages:
+            if source_filter != "All Sources":
+                if "Nix" in source_filter and p.source != "Nix":
+                    continue
+                if "Snap" in source_filter and p.source != "Snap":
+                    continue
+                if "Flatpak" in source_filter and p.source != "Flatpak":
+                    continue
+
+            if query and (query not in p.name.lower() and query not in p.version.lower()):
+                continue
+
+            icon = "❄️" if p.source == "Nix" else ("📦" if p.source == "Snap" else "🚀")
+            source_badge = f"{icon} {p.source}"
+            iid = f"{p.source}::{p.name}"
+            self._tree.insert("", "end", iid=iid, values=(p.name, p.version, source_badge))
+            visible_count += 1
+
+        total = len(self._cached_packages)
+        if visible_count == total:
+            self._count_lbl.configure(text=f"Packages: {total}")
+        else:
+            self._count_lbl.configure(text=f"Showing: {visible_count} / {total}")
 
     def _on_export(self) -> None:
         if not self._cached_packages:
             messagebox.showinfo("Export", "No installed packages found to export.")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            parent=self,
+            title="Export Declarative Nix Environment",
+            initialfile="shell.nix",
+            filetypes=[
+                ("Nix Shell Expression (*.nix)", "*.nix"),
+                ("JSON Package Manifest (*.json)", "*.json"),
+                ("All Files (*.*)", "*.*"),
+            ],
+        nix_pkgs = [p for p in self._cached_packages if p.source == "Nix"]
+        if not nix_pkgs:
+            messagebox.showinfo(
+                "Export Declarative Environment",
+                "Exporting 'shell.nix' requires Nix packages.\n\n"
+                "Your currently detected installed packages are managed via Snap/Flatpak.",
+            )
             return
 
         file_path = filedialog.asksaveasfilename(
@@ -181,7 +261,7 @@ class PackageTable(ctk.CTkFrame):
             return
 
         try:
-            saved_path = NixEnvironmentExporter.export_to_file(self._cached_packages, file_path)
+            saved_path = NixEnvironmentExporter.export_to_file(nix_pkgs, file_path)
             self._log.info("Exported environment manifest to: %s", saved_path)
             if self._console_cb:
                 self._console_cb("info", f"✓ Environment exported to: {saved_path}")
@@ -196,7 +276,7 @@ class PackageTable(ctk.CTkFrame):
     def _on_upgrade_all(self) -> None:
         if not messagebox.askyesno(
             "Upgrade Packages",
-            "This will execute 'nix-env -u' to upgrade all packages in your profile to their latest versions.\nProceed?",
+            "This will execute 'nix-env -u' to upgrade all Nix packages in your profile to their latest versions.\nProceed?",
         ):
             return
 
@@ -219,7 +299,6 @@ class PackageTable(ctk.CTkFrame):
 
     # ---- uninstall --------------------------------------------------------
 
-
     def _show_context_menu(self, event: tk.Event) -> None:
         row = self._tree.identify_row(event.y)
         if row:
@@ -229,35 +308,36 @@ class PackageTable(ctk.CTkFrame):
     def _on_uninstall(self) -> None:
         selection = self._tree.selection()
         if not selection:
+            messagebox.showinfo("Uninstall", "Please select one or more packages from the list first.")
             return
 
-        names: list[str] = []
+        selected_pkgs: list[PackageInfo] = []
         for iid in selection:
-            item_data = self._tree.item(iid)
-            vals = item_data.get("values", ())
-            if vals and len(vals) > 0:
-                names.append(str(vals[0]))
-            else:
-                names.append(str(iid))
+            for p in self._cached_packages:
+                if f"{p.source}::{p.name}" == iid or p.name == iid:
+                    selected_pkgs.append(p)
+                    break
 
-        if not names:
+        if not selected_pkgs:
             return
 
+        labels = [f"• {p.name} [{p.source}]" for p in selected_pkgs]
         if not messagebox.askyesno(
             "Confirm Uninstall",
-            f"Remove the following package(s)?\n\n" + "\n".join(names),
+            f"Are you sure you want to uninstall the following package(s)?\n\n" + "\n".join(labels),
         ):
             return
-        for name in names:
-            self._log.info("Uninstalling package: %s", name)
-            self._worker.submit(self._uninstall_one, name)
 
-    def _uninstall_one(self, name: str) -> None:
+        for pkg in selected_pkgs:
+            self._log.info("Uninstalling %s package: %s", pkg.source, pkg.name)
+            self._worker.submit(self._uninstall_one, pkg)
+
+    def _uninstall_one(self, pkg: PackageInfo) -> None:
         try:
-            asyncio.run(self._pm.uninstall(name))
-            msg = f"✓ Removed {name}"
+            asyncio.run(self._pm.uninstall_generic(pkg))
+            msg = f"✓ Successfully removed {pkg.name} ({pkg.source})"
         except Exception as exc:
-            msg = f"✗ Failed to remove {name}: {exc}"
+            msg = f"✗ Failed to remove {pkg.name}: {exc}"
             self._log.error(msg)
 
         if self._console_cb:

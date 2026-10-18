@@ -33,3 +33,10 @@ async def test_failed_command_raises_error():
     with pytest.raises(CommandError) as exc_info:
         await executor.run(["false"])
     assert "Command failed" in str(exc_info.value)
+
+
+def test_get_effective_env():
+    from core.command_executor import get_effective_env
+    env = get_effective_env()
+    assert "PATH" in env
+    assert "XDG_DATA_DIRS" in env

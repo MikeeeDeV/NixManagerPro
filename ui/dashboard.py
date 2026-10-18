@@ -121,13 +121,25 @@ class Dashboard(ctk.CTkFrame):
     # ---- background helpers -----------------------------------------------
 
     def _fetch_status(self) -> None:
+        daemon = None
+        store = None
+        chans = None
+
         try:
             daemon = asyncio.run(self._diag.daemon_status())
-            store  = asyncio.run(self._diag.store_usage())
-            chans  = asyncio.run(self._diag.channel_list())
         except Exception as exc:
-            self._log.error("Status fetch failed: %s", exc)
-            daemon = store = chans = None
+            self._log.error("Daemon status fetch error: %s", exc)
+
+        try:
+            store = asyncio.run(self._diag.store_usage())
+        except Exception as exc:
+            self._log.error("Store usage fetch error: %s", exc)
+
+        try:
+            chans = asyncio.run(self._diag.channel_list())
+        except Exception as exc:
+            self._log.error("Channel query error: %s", exc)
+
         self.after(0, self._update_cards, daemon, store, chans)
 
     def _update_cards(self, daemon, store, chans) -> None:

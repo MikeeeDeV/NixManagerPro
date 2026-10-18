@@ -32,11 +32,13 @@ class PackageOperationError(RuntimeError):
 
 @dataclass
 class PackageInfo:
-    """Parsed representation of one installed Nix package."""
+    """Parsed representation of one installed package across supported managers."""
 
     name: str
     version: str
-    raw_line: str = ""          # original nix‑env output line
+    source: str = "Nix"          # "Nix", "Flatpak", "Snap", "System"
+    app_id: str = ""
+    raw_line: str = ""           # original output line
 
 
 # ---------------------------------------------------------------------------
@@ -45,8 +47,8 @@ class PackageInfo:
 
 class NixPackageManager:
     """
-    Provides install / uninstall / list / search / GC via the ``nix-env``
-    and ``nix-store`` command‑line tools.
+    Provides install / uninstall / list / search / GC via the ``nix-env``,
+    ``flatpak``, ``snap``, and ``nix-store`` command‑line tools.
     """
 
     def __init__(self, executor: AsyncCommandExecutor) -> None:
@@ -56,29 +58,74 @@ class NixPackageManager:
 
     async def list_installed(self) -> List[PackageInfo]:
         """
-        Parse the output of ``nix-env -q`` and return structured data.
-
-        Each line looks like ``pkgname-1.2.3``.  We split on the *last*
-        dash to separate name from version.
+        Parse the output of ``nix-env -q`` and return structured Nix package data.
         """
-        result = await self._exec.run("nix-env -q")
+        try:
+            result = await self._exec.run("nix-env -q")
+        except Exception:
+            return []
+
         packages: List[PackageInfo] = []
         for line in result.stdout.splitlines():
             line = line.strip()
             if not line:
                 continue
-            # Split on last '-' that precedes a digit  →  name / version
             match = re.match(r"^(.+)-(\d.*)$", line)
             if match:
                 packages.append(
                     PackageInfo(
                         name=match.group(1),
                         version=match.group(2),
+                        source="Nix",
                         raw_line=line,
                     )
                 )
             else:
-                packages.append(PackageInfo(name=line, version="?", raw_line=line))
+                packages.append(PackageInfo(name=line, version="?", source="Nix", raw_line=line))
+        return packages
+
+    async def list_all_installed(self) -> List[PackageInfo]:
+        """
+        Discover installed packages across all available Linux package managers:
+        Nix profiles, Flatpak applications, and Snap packages.
+        """
+        packages: List[PackageInfo] = []
+
+        # 1. Nix Packages
+        try:
+            nix_pkgs = await self.list_installed()
+            packages.extend(nix_pkgs)
+        except Exception:
+            pass
+
+        # 2. Flatpak Packages
+        try:
+            fp_res = await self._exec.run("flatpak list --app --columns=name,application,version", timeout=10)
+            for line in fp_res.stdout.splitlines():
+                parts = [p.strip() for p in line.split("\t") if p.strip()]
+                if len(parts) >= 3:
+                    packages.append(PackageInfo(name=parts[0], version=parts[2], source="Flatpak", app_id=parts[1]))
+                elif len(parts) == 2:
+                    packages.append(PackageInfo(name=parts[0], version="installed", source="Flatpak", app_id=parts[1]))
+        except Exception:
+            pass
+
+        # 3. Snap Packages
+        try:
+            snap_res = await self._exec.run("snap list", timeout=10)
+            lines = snap_res.stdout.splitlines()
+            if len(lines) > 1:
+                for line in lines[1:]:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        name, ver = parts[0], parts[1]
+                        # Filter out internal base system snaps
+                        if name in ("bare", "core", "core18", "core20", "core22", "core24", "snapd"):
+                            continue
+                        packages.append(PackageInfo(name=name, version=ver, source="Snap", app_id=name))
+        except Exception:
+            pass
+
         return packages
 
     async def search(self, query: str) -> List[Dict[str, str]]:
@@ -104,14 +151,19 @@ class NixPackageManager:
         Install a package by its attribute path (e.g. ``nixpkgs.htop``).
 
         Falls back to ``nix-env -iA nixpkgs.<attr_path>`` if the caller
-        supplies a bare name.
+        supplies a bare name. Also automatically syncs .desktop entries.
         """
-        # Normalise: if the user typed a bare name, prefix nixpkgs.
         if "." not in attr_path:
             attr_path = f"nixpkgs.{attr_path}"
 
         try:
             await self._exec.run(f"nix-env -iA {attr_path}")
+            # Automatically integrate new desktop shortcuts into Ubuntu Dash
+            try:
+                from utils.desktop_integrator import sync_nix_desktop_entries
+                sync_nix_desktop_entries()
+            except Exception:
+                pass
         except CommandError as exc:
             raise PackageOperationError(
                 f"Failed to install '{attr_path}': {exc}"
@@ -124,6 +176,21 @@ class NixPackageManager:
         except CommandError as exc:
             raise PackageOperationError(
                 f"Failed to uninstall '{pkg_name}': {exc}"
+            ) from exc
+
+    async def uninstall_generic(self, pkg: PackageInfo) -> None:
+        """Uninstall package using its native package manager (Nix, Flatpak, or Snap)."""
+        try:
+            if pkg.source == "Flatpak":
+                target = pkg.app_id or pkg.name
+                await self._exec.run(f"flatpak uninstall -y {target}")
+            elif pkg.source == "Snap":
+                await self._exec.run(f"snap remove {pkg.name}")
+            else:
+                await self._exec.run(f"nix-env -e {pkg.name}")
+        except CommandError as exc:
+            raise PackageOperationError(
+                f"Failed to uninstall {pkg.source} package '{pkg.name}': {exc}"
             ) from exc
 
     async def upgrade_all(self) -> str:
