@@ -184,6 +184,10 @@ class UpdatesView(ctk.CTkFrame):
 
         self._worker.submit_async(_scan, on_success=_on_done, on_error=_on_err)
 
+    def refresh_all(self) -> None:
+        """Alias for app startup refresh."""
+        self.check_for_updates()
+
     def upgrade_selected(self) -> None:
         """Upgrade packages selected in tree."""
         selected_ids = self._tree.selection()
