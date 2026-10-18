@@ -11,7 +11,9 @@ Every method is an ``async`` coroutine that delegates to the shared
 
 from __future__ import annotations
 
+import asyncio
 import re
+import shutil
 from dataclasses import dataclass
 from typing import Dict, List
 
@@ -281,74 +283,91 @@ class NixPackageManager:
 
     async def check_updates(self) -> List[UpdateCandidate]:
         """
-        Scan Nix, Snap, and Flatpak for available package upgrades.
+        Scan Nix, Snap, and Flatpak concurrently for available package upgrades
+        with strict timeouts to prevent channel evaluation hangs.
         """
         candidates: List[UpdateCandidate] = []
 
-        # 1. Nix updates check (via dry-run)
-        try:
-            res = await self._exec.run("nix-env -u --dry-run")
-            # Typical line: (would) upgrade 'foo-1.0' to 'foo-1.1'
-            import re
-            for line in res.stdout.splitlines():
-                match = re.search(r"upgrade[d]? ['\"]?(.*?)['\"]? to ['\"]?(.*?)['\"]?", line, re.IGNORECASE)
-                if match:
-                    cur_str, new_str = match.group(1), match.group(2)
-                    # parse name and versions
-                    cur_info = self._parse_line(cur_str)
-                    new_info = self._parse_line(new_str)
-                    candidates.append(
-                        UpdateCandidate(
-                            name=cur_info.name or cur_str,
-                            current_version=cur_info.version or "installed",
-                            new_version=new_info.version or "latest",
-                            source="Nix",
-                        )
-                    )
-        except Exception:
-            pass
-
-        # 2. Snap updates check
-        if shutil.which("snap"):
+        async def _check_nix() -> List[UpdateCandidate]:
+            nix_candidates: List[UpdateCandidate] = []
             try:
-                res = await self._exec.run("snap refresh --list")
-                lines = [l.strip() for l in res.stdout.splitlines() if l.strip()]
-                # Skip header if present
-                for line in lines[1:]:
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        candidates.append(
-                            UpdateCandidate(
-                                name=parts[0],
-                                current_version="installed",
-                                new_version=parts[1],
-                                source="Snap",
-                            )
-                        )
-            except Exception:
-                pass
+                # Target installed packages rather than global nixpkgs to prevent slow evaluations
+                installed_res = await self._exec.run("nix-env -q")
+                installed_names = [line.strip().split("-")[0] for line in installed_res.stdout.splitlines() if line.strip()]
+                target_str = " ".join(installed_names) if installed_names else ""
+                cmd = f"nix-env -u --dry-run {target_str}" if target_str else "nix-env -u --dry-run"
 
-        # 3. Flatpak updates check
-        if shutil.which("flatpak"):
-            try:
-                res = await self._exec.run("flatpak remote-ls --updates")
+                res = await asyncio.wait_for(self._exec.run(cmd), timeout=4.0)
+                import re
                 for line in res.stdout.splitlines():
-                    line = line.strip()
-                    if line:
-                        parts = line.split()
-                        app_id = parts[0]
-                        version = parts[1] if len(parts) > 1 else "latest"
-                        candidates.append(
+                    match = re.search(r"upgrade[d]? ['\"]?(.*?)['\"]? to ['\"]?(.*?)['\"]?", line, re.IGNORECASE)
+                    if match:
+                        cur_str, new_str = match.group(1), match.group(2)
+                        cur_info = self._parse_line(cur_str)
+                        new_info = self._parse_line(new_str)
+                        nix_candidates.append(
                             UpdateCandidate(
-                                name=app_id.split(".")[-1] if "." in app_id else app_id,
-                                current_version="installed",
-                                new_version=version,
-                                source="Flatpak",
-                                app_id=app_id,
+                                name=cur_info.name or cur_str,
+                                current_version=cur_info.version or "installed",
+                                new_version=new_info.version or "latest",
+                                source="Nix",
                             )
                         )
             except Exception:
                 pass
+            return nix_candidates
+
+        async def _check_snap() -> List[UpdateCandidate]:
+            snap_candidates: List[UpdateCandidate] = []
+            if shutil.which("snap"):
+                try:
+                    res = await asyncio.wait_for(self._exec.run("snap refresh --list"), timeout=5.0)
+                    lines = [l.strip() for l in res.stdout.splitlines() if l.strip()]
+                    for line in lines[1:]:
+                        parts = line.split()
+                        if len(parts) >= 2 and parts[0].lower() != "name":
+                            snap_candidates.append(
+                                UpdateCandidate(
+                                    name=parts[0],
+                                    current_version="installed",
+                                    new_version=parts[1],
+                                    source="Snap",
+                                )
+                            )
+                except Exception:
+                    pass
+            return snap_candidates
+
+        async def _check_flatpak() -> List[UpdateCandidate]:
+            flatpak_candidates: List[UpdateCandidate] = []
+            if shutil.which("flatpak"):
+                try:
+                    res = await asyncio.wait_for(self._exec.run("flatpak remote-ls --updates"), timeout=5.0)
+                    for line in res.stdout.splitlines():
+                        line = line.strip()
+                        if line:
+                            parts = line.split()
+                            if parts[0].lower() == "name":
+                                continue
+                            app_name = parts[0]
+                            app_id = parts[1] if len(parts) > 1 else app_name
+                            version = parts[2] if len(parts) > 2 else "latest"
+                            flatpak_candidates.append(
+                                UpdateCandidate(
+                                    name=app_name,
+                                    current_version="installed",
+                                    new_version=version,
+                                    source="Flatpak",
+                                    app_id=app_id,
+                                )
+                            )
+                except Exception:
+                    pass
+            return flatpak_candidates
+
+        results = await asyncio.gather(_check_nix(), _check_snap(), _check_flatpak())
+        for res_list in results:
+            candidates.extend(res_list)
 
         return candidates
 
