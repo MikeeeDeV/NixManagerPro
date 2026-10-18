@@ -15,10 +15,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import tkinter as tk
-from tkinter import ttk, messagebox
-from typing import List, TYPE_CHECKING
+from tkinter import filedialog, messagebox, ttk
+from typing import TYPE_CHECKING, List
 
 import customtkinter as ctk
+
+from core.exporter import NixEnvironmentExporter
+
 
 if TYPE_CHECKING:
     from core.package_manager import NixPackageManager, PackageInfo
@@ -41,6 +44,7 @@ class PackageTable(ctk.CTkFrame):
         self._worker = worker
         self._log = logger
         self._console_cb = console_cb      # optional (stream, line) callback
+        self._cached_packages: List[PackageInfo] = []
 
         # ---- layout -------------------------------------------------------
         self.grid_columnconfigure(0, weight=1)
@@ -58,12 +62,23 @@ class PackageTable(ctk.CTkFrame):
         )
         refresh_btn.pack(side="right", padx=6, pady=4)
 
+        export_btn = ctk.CTkButton(
+            toolbar,
+            text="📤  Export shell.nix",
+            width=150,
+            fg_color="#8e44ad",
+            hover_color="#9b59b6",
+            command=self._on_export,
+        )
+        export_btn.pack(side="right", padx=6, pady=4)
+
         uninstall_btn = ctk.CTkButton(
             toolbar, text="🗑  Uninstall Selected", width=160,
             fg_color="#c0392b", hover_color="#e74c3c",
             command=self._on_uninstall,
         )
         uninstall_btn.pack(side="right", padx=6, pady=4)
+
 
         # ---- treeview (standard ttk, works well inside CTk) ----------------
         style = ttk.Style()
@@ -129,10 +144,44 @@ class PackageTable(ctk.CTkFrame):
         self.after(0, self._populate, pkgs)
 
     def _populate(self, pkgs: List[PackageInfo]) -> None:
+        self._cached_packages = pkgs
         self._tree.delete(*self._tree.get_children())
         for p in pkgs:
             self._tree.insert("", "end", iid=p.name, values=(p.name, p.version))
         self._count_lbl.configure(text=f"Packages: {len(pkgs)}")
+
+    def _on_export(self) -> None:
+        if not self._cached_packages:
+            messagebox.showinfo("Export", "No installed packages found to export.")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            parent=self,
+            title="Export Declarative Nix Environment",
+            initialfile="shell.nix",
+            filetypes=[
+                ("Nix Shell Expression (*.nix)", "*.nix"),
+                ("JSON Package Manifest (*.json)", "*.json"),
+                ("All Files (*.*)", "*.*"),
+            ],
+        )
+
+        if not file_path:
+            return
+
+        try:
+            saved_path = NixEnvironmentExporter.export_to_file(self._cached_packages, file_path)
+            self._log.info("Exported environment manifest to: %s", saved_path)
+            if self._console_cb:
+                self._console_cb("info", f"✓ Environment exported to: {saved_path}")
+            messagebox.showinfo(
+                "Export Successful",
+                f"Declarative environment successfully generated!\n\nLocation:\n{saved_path}\n\nYou can run 'nix-shell' inside that directory to recreate this exact environment.",
+            )
+        except Exception as exc:
+            self._log.error("Failed to export environment: %s", exc)
+            messagebox.showerror("Export Failed", f"Could not write file:\n{exc}")
+
 
     # ---- uninstall --------------------------------------------------------
 
