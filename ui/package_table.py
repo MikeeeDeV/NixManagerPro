@@ -112,6 +112,17 @@ class PackageTable(ctk.CTkFrame):
         )
         upgrade_btn.pack(side="right", padx=4, pady=4)
 
+        purge_btn = ctk.CTkButton(
+            toolbar,
+            text="💥  Deep Purge",
+            width=120,
+            height=28,
+            fg_color="#78281f",
+            hover_color="#922b21",
+            command=self._on_purge,
+        )
+        purge_btn.pack(side="right", padx=4, pady=4)
+
         uninstall_btn = ctk.CTkButton(
             toolbar,
             text="🗑  Uninstall",
@@ -168,7 +179,8 @@ class PackageTable(ctk.CTkFrame):
 
         # Context menu
         self._ctx_menu = tk.Menu(self, tearoff=0)
-        self._ctx_menu.add_command(label="Uninstall", command=self._on_uninstall)
+        self._ctx_menu.add_command(label="🗑  Standard Uninstall", command=self._on_uninstall)
+        self._ctx_menu.add_command(label="💥  Deep Purge (Complete Clean)", command=self._on_purge)
         self._tree.bind("<Button-3>", self._show_context_menu)
 
     # ---- public API -------------------------------------------------------
@@ -288,7 +300,7 @@ class PackageTable(ctk.CTkFrame):
             self._console_cb("info", msg)
         self.after(500, self.refresh)
 
-    # ---- uninstall --------------------------------------------------------
+    # ---- uninstall & purge ------------------------------------------------
 
     def _show_context_menu(self, event: tk.Event) -> None:
         row = self._tree.identify_row(event.y)
@@ -297,6 +309,7 @@ class PackageTable(ctk.CTkFrame):
             self._ctx_menu.tk_popup(event.x_root, event.y_root)
 
     def _on_uninstall(self) -> None:
+        """Standard uninstall (مسح عادي)."""
         selection = self._tree.selection()
         if not selection:
             messagebox.showinfo("Uninstall", "Please select one or more packages from the list first.")
@@ -313,10 +326,12 @@ class PackageTable(ctk.CTkFrame):
             return
 
         labels = [f"• {p.name} [{p.source}]" for p in selected_pkgs]
-        if not messagebox.askyesno(
-            "Confirm Uninstall",
-            f"Are you sure you want to uninstall the following package(s)?\n\n" + "\n".join(labels),
-        ):
+        prompt = (
+            "Standard Uninstall (مسح عادي):\n\n"
+            "This will uninstall the package binaries while preserving your application settings and configs.\n\n"
+            "Target package(s):\n" + "\n".join(labels) + "\n\nProceed?"
+        )
+        if not messagebox.askyesno("Confirm Standard Uninstall", prompt):
             return
 
         for pkg in selected_pkgs:
@@ -326,12 +341,60 @@ class PackageTable(ctk.CTkFrame):
     def _uninstall_one(self, pkg: PackageInfo) -> None:
         try:
             asyncio.run(self._pm.uninstall_generic(pkg))
-            msg = f"✓ Successfully removed {pkg.name} ({pkg.source})"
+            msg = f"✓ Successfully uninstalled {pkg.name} ({pkg.source})"
         except Exception as exc:
-            msg = f"✗ Failed to remove {pkg.name}: {exc}"
+            msg = f"✗ Failed to uninstall {pkg.name}: {exc}"
             self._log.error(msg)
 
         if self._console_cb:
             self._console_cb("info", msg)
-        # Auto‑refresh after uninstall
+        self.after(500, self.refresh)
+
+    def _on_purge(self) -> None:
+        """Deep Purge (مسح نهائي شامل) - Eradicates package, configs, cache, and store links."""
+        selection = self._tree.selection()
+        if not selection:
+            messagebox.showinfo("Deep Purge", "Please select one or more packages from the list first.")
+            return
+
+        selected_pkgs: list[PackageInfo] = []
+        for iid in selection:
+            for p in self._cached_packages:
+                if f"{p.source}::{p.name}" == iid or p.name == iid:
+                    selected_pkgs.append(p)
+                    break
+
+        if not selected_pkgs:
+            return
+
+        labels = [f"• {p.name} [{p.source}]" for p in selected_pkgs]
+        prompt = (
+            "⚠️ DEEP PURGE WARNING (مسح نهائي شامل):\n\n"
+            "This will completely erase the selected package(s) as if never installed:\n"
+            "• Remove package binaries\n"
+            "• Delete user configuration & cache directories\n"
+            "• Remove desktop application shortcuts\n"
+            "• Trigger deep garbage collection to free disk space\n\n"
+            "Target package(s):\n" + "\n".join(labels) + "\n\nAre you sure you want to completely erase them?"
+        )
+        if not messagebox.askyesno("Confirm Deep Purge", prompt):
+            return
+
+        for pkg in selected_pkgs:
+            self._log.info("Deep purging %s package: %s", pkg.source, pkg.name)
+            if self._console_cb:
+                self._console_cb("info", f"💥 Initiating Deep Purge for {pkg.name} ({pkg.source})...")
+            self._worker.submit(self._purge_one, pkg)
+
+    def _purge_one(self, pkg: PackageInfo) -> None:
+        try:
+            summary = asyncio.run(self._pm.purge_generic(pkg))
+            msg = f"✓ Deep Purge completed for {pkg.name} ({pkg.source})\n{summary}"
+        except Exception as exc:
+            msg = f"✗ Deep Purge failed for {pkg.name}: {exc}"
+            self._log.error(msg)
+
+        if self._console_cb:
+            for line in msg.splitlines():
+                self._console_cb("info", line)
         self.after(500, self.refresh)
