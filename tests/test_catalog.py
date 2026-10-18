@@ -9,6 +9,7 @@ def test_catalog_search():
     results = search_catalog("git")
     assert any(r.name == "Git" for r in results)
 
-    dev_tools = search_catalog("", category="Developer Tools")
+    dev_tools = search_catalog("", category="Development")
     assert len(dev_tools) > 0
-    assert all(r.category == "Developer Tools" for r in dev_tools)
+    assert all(r.category == "Development" for r in dev_tools)
+

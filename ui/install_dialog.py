@@ -14,9 +14,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import webbrowser
 import tkinter as tk
 from tkinter import ttk
 from typing import Dict, List, TYPE_CHECKING
+
 
 import customtkinter as ctk
 
@@ -137,18 +139,108 @@ class InstallDialog(ctk.CTkFrame):
         self._tree.grid(row=0, column=0, sticky="nsew")
 
         vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self._tree.yview)
-        vsb.grid(row=0, column=1, sticky="ns")
-        self._tree.configure(yscrollcommand=vsb.set)
+        self._tree.bind("<<TreeviewSelect>>", self._on_tree_select)
 
-        # ---- live embedded progress & install action -----------------------
+        # ---- WingetUI-style Package Details Card & Action Bar -------------
         bottom_frame = ctk.CTkFrame(self)
         bottom_frame.grid(row=3, column=0, sticky="ew", padx=6, pady=(4, 6))
         bottom_frame.grid_columnconfigure(0, weight=1)
 
+        # Details Card Container
+        self._card = ctk.CTkFrame(bottom_frame, corner_radius=8, fg_color=("gray85", "#131b2e"))
+        self._card.grid(row=0, column=0, sticky="ew", padx=6, pady=(4, 4))
+        self._card.grid_columnconfigure(1, weight=1)
+
+        # Left column of card: Title & Badges
+        card_left = ctk.CTkFrame(self._card, fg_color="transparent")
+        card_left.grid(row=0, column=0, padx=12, pady=8, sticky="nw")
+
+        self._card_title = ctk.CTkLabel(
+            card_left,
+            text="Select any package above",
+            font=ctk.CTkFont(size=15, weight="bold"),
+            anchor="w",
+        )
+        self._card_title.pack(anchor="w")
+
+        self._card_attr = ctk.CTkLabel(
+            card_left,
+            text="Attribute: –",
+            font=ctk.CTkFont(size=11),
+            text_color="#8ab4f8",
+            anchor="w",
+        )
+        self._card_attr.pack(anchor="w")
+
+        # Right column of card: Description, Badges & Actions
+        card_right = ctk.CTkFrame(self._card, fg_color="transparent")
+        card_right.grid(row=0, column=1, padx=12, pady=8, sticky="ew")
+
+        self._card_desc = ctk.CTkLabel(
+            card_right,
+            text="Click a package to see detailed description, license, and homepage link.",
+            font=ctk.CTkFont(size=12),
+            wraplength=480,
+            justify="left",
+            anchor="w",
+        )
+        self._card_desc.pack(anchor="w", pady=(0, 4))
+
+        meta_row = ctk.CTkFrame(card_right, fg_color="transparent")
+        meta_row.pack(anchor="w")
+
+        self._card_meta = ctk.CTkLabel(
+            meta_row,
+            text="Source: nixpkgs",
+            font=ctk.CTkFont(size=11),
+            text_color="#a0a0a0",
+        )
+        self._card_meta.pack(side="left", padx=(0, 10))
+
+        self._homepage_btn = ctk.CTkButton(
+            meta_row,
+            text="🌐 Homepage ↗",
+            width=110,
+            height=24,
+            font=ctk.CTkFont(size=11),
+            fg_color="transparent",
+            text_color="#3498db",
+            hover_color=("gray75", "gray25"),
+            state="disabled",
+            command=self._open_homepage,
+        )
+        self._homepage_btn.pack(side="left", padx=4)
+
+        copy_cmd_btn = ctk.CTkButton(
+            meta_row,
+            text="📋 Copy Command",
+            width=120,
+            height=24,
+            font=ctk.CTkFont(size=11),
+            fg_color="transparent",
+            text_color="#a3d9a5",
+            hover_color=("gray75", "gray25"),
+            command=self._copy_command,
+        )
+        copy_cmd_btn.pack(side="left", padx=4)
+
+        # Action Button
+        self._install_btn = ctk.CTkButton(
+            self._card,
+            text="⬇  Install Package",
+            width=180,
+            height=40,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            fg_color="#27ae60",
+            hover_color="#2ecc71",
+            command=self._on_install,
+        )
+        self._install_btn.grid(row=0, column=2, padx=14, pady=8, sticky="e")
+
         # Mini live terminal inside the tab so user SEES output directly
         self._mini_log = tk.Text(
             bottom_frame,
-            height=5,
+            height=4,
             state="disabled",
             bg="#111726",
             fg="#9bc53d",
@@ -157,22 +249,8 @@ class InstallDialog(ctk.CTkFrame):
             padx=6,
             pady=4,
         )
-        self._mini_log.grid(row=0, column=0, sticky="ew", padx=6, pady=4)
+        self._mini_log.grid(row=1, column=0, sticky="ew", padx=6, pady=(0, 4))
 
-        btn_bar = ctk.CTkFrame(bottom_frame, fg_color="transparent")
-        btn_bar.grid(row=1, column=0, sticky="ew", padx=6, pady=(0, 4))
-
-        self._install_btn = ctk.CTkButton(
-            btn_bar,
-            text="⬇  Install Selected Package",
-            width=220,
-            height=36,
-            font=ctk.CTkFont(size=13, weight="bold"),
-            fg_color="#27ae60",
-            hover_color="#2ecc71",
-            command=self._on_install,
-        )
-        self._install_btn.pack(side="right", padx=4)
 
         # Populate with curated catalog initially
         self._on_filter()
@@ -197,7 +275,56 @@ class InstallDialog(ctk.CTkFrame):
             )
         self._status.configure(text=f"Showing {len(items)} popular curated package(s)")
 
+    def _on_tree_select(self, _event=None) -> None:
+        sel = self._tree.selection()
+        if not sel:
+            return
+        idx = int(sel[0])
+        if idx >= len(self._active_items):
+            return
+
+        item = self._active_items[idx]
+        name = item.name if isinstance(item, CatalogItem) else item.get("name", "")
+        attr = item.attr if isinstance(item, CatalogItem) else item.get("attr", "")
+        desc = item.description if isinstance(item, CatalogItem) else "Upstream package derivation"
+        license_str = getattr(item, "license", "Open Source")
+        homepage = getattr(item, "homepage", "")
+
+        self._card_title.configure(text=name)
+        self._card_attr.configure(text=f"Attribute: {attr}")
+        self._card_desc.configure(text=desc)
+        self._card_meta.configure(text=f"License: {license_str}  |  Source: nixpkgs")
+
+        self._current_homepage = homepage
+        if homepage:
+            self._homepage_btn.configure(state="normal")
+        else:
+            self._homepage_btn.configure(state="disabled")
+
+        self._current_attr = attr
+
+    def _open_homepage(self) -> None:
+        url = getattr(self, "_current_homepage", "")
+        if url:
+            webbrowser.open(url)
+
+    def _copy_command(self) -> None:
+        attr = getattr(self, "_current_attr", "")
+        if not attr:
+            sel = self._tree.selection()
+            if sel:
+                idx = int(sel[0])
+                it = self._active_items[idx]
+                attr = it.attr if isinstance(it, CatalogItem) else it.get("attr", "")
+
+        if attr:
+            cmd = f"nix-env -iA {attr}"
+            self.clipboard_clear()
+            self.clipboard_append(cmd)
+            self._status.configure(text=f"📋 Copied to clipboard: {cmd}")
+
     # ---- upstream nixpkgs search fallback ----------------------------------
+
 
     def _on_search_upstream(self) -> None:
         query = self._query_var.get().strip()
