@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, List
 
 import customtkinter as ctk
 
+from utils.icons import get_icon
 from .modern_dialog import show_alert_dialog, show_confirm_dialog
 
 if TYPE_CHECKING:
@@ -53,13 +54,20 @@ class GenerationsView(ctk.CTkFrame):
         self._status_lbl.pack(side="left", padx=10)
 
         refresh_btn = ctk.CTkButton(
-            toolbar, text="⟳  Refresh", width=100, command=self.refresh
+            toolbar,
+            text="Refresh",
+            image=get_icon("refresh", (16, 16)),
+            compound="left",
+            width=110,
+            command=self.refresh,
         )
         refresh_btn.pack(side="right", padx=6, pady=6)
 
         self._rollback_btn = ctk.CTkButton(
             toolbar,
-            text="⚡ Instant Rollback",
+            text="Instant Rollback",
+            image=get_icon("history", (16, 16)),
+            compound="left",
             width=150,
             fg_color="#d35400",
             hover_color="#e67e22",
@@ -70,14 +78,18 @@ class GenerationsView(ctk.CTkFrame):
         self._switch_btn = ctk.CTkButton(
             toolbar,
             text="Switch to Selected",
-            width=150,
+            image=get_icon("check", (16, 16)),
+            compound="left",
+            width=160,
             command=self._on_switch,
         )
         self._switch_btn.pack(side="right", padx=6, pady=6)
 
         purge_btn = ctk.CTkButton(
             toolbar,
-            text="🧹 Delete Old",
+            text="Delete Old",
+            image=get_icon("purge", (16, 16)),
+            compound="left",
             width=120,
             fg_color="#7f8c8d",
             hover_color="#95a5a6",
@@ -144,7 +156,7 @@ class GenerationsView(ctk.CTkFrame):
     def _populate(self, gens: List[GenerationInfo]) -> None:
         self._tree.delete(*self._tree.get_children())
         for g in gens:
-            status_text = "🟢 Active (Current)" if g.is_current else "Historical"
+            status_text = "Active (Current)" if g.is_current else "Historical"
             self._tree.insert(
                 "", "end", iid=str(g.id), values=(g.id, status_text, g.timestamp)
             )

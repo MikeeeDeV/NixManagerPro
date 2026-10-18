@@ -22,6 +22,7 @@ import customtkinter as ctk
 
 from core.catalog import resolve_rich_details
 from core.exporter import NixEnvironmentExporter
+from utils.icons import get_icon
 from .app_details_dialog import AppDetailsDialog
 from .modern_dialog import show_alert_dialog, show_confirm_dialog
 
@@ -70,8 +71,8 @@ class PackageTable(ctk.CTkFrame):
         self._search_entry = ctk.CTkEntry(
             toolbar,
             textvariable=self._search_var,
-            placeholder_text="🔍  Filter installed...",
-            width=180,
+            placeholder_text="Filter installed packages...",
+            width=200,
             height=28,
         )
         self._search_entry.pack(side="left", padx=6, pady=4)
@@ -81,21 +82,29 @@ class PackageTable(ctk.CTkFrame):
         self._source_menu = ctk.CTkOptionMenu(
             toolbar,
             variable=self._source_filter_var,
-            values=["All Sources", "Nix ❄️", "Snap 📦", "Flatpak 🚀"],
-            width=130,
+            values=["All Sources", "Nix", "Snap", "Flatpak"],
+            width=120,
             height=28,
             command=lambda _: self._apply_filter(),
         )
         self._source_menu.pack(side="left", padx=4, pady=4)
 
         refresh_btn = ctk.CTkButton(
-            toolbar, text="⟳  Refresh", width=90, height=28, command=self.refresh,
+            toolbar,
+            text="Refresh",
+            image=get_icon("refresh", size=(14, 14)),
+            compound="left",
+            width=90,
+            height=28,
+            command=self.refresh,
         )
         refresh_btn.pack(side="right", padx=4, pady=4)
 
         restore_btn = ctk.CTkButton(
             toolbar,
-            text="📥  Restore Stack",
+            text="Restore Stack",
+            image=get_icon("restore", size=(14, 14)),
+            compound="left",
             width=120,
             height=28,
             fg_color="#2980b9",
@@ -106,7 +115,9 @@ class PackageTable(ctk.CTkFrame):
 
         export_btn = ctk.CTkButton(
             toolbar,
-            text="💾  Export Stack",
+            text="Export Stack",
+            image=get_icon("export", size=(14, 14)),
+            compound="left",
             width=120,
             height=28,
             fg_color="#8e44ad",
@@ -117,7 +128,9 @@ class PackageTable(ctk.CTkFrame):
 
         upgrade_btn = ctk.CTkButton(
             toolbar,
-            text="🚀  Upgrade All",
+            text="Upgrade All",
+            image=get_icon("upgrade", size=(14, 14)),
+            compound="left",
             width=110,
             height=28,
             fg_color="#27ae60",
@@ -128,7 +141,9 @@ class PackageTable(ctk.CTkFrame):
 
         purge_btn = ctk.CTkButton(
             toolbar,
-            text="💥  Deep Purge",
+            text="Deep Purge",
+            image=get_icon("purge", size=(14, 14)),
+            compound="left",
             width=120,
             height=28,
             fg_color="#78281f",
@@ -139,8 +154,10 @@ class PackageTable(ctk.CTkFrame):
 
         uninstall_btn = ctk.CTkButton(
             toolbar,
-            text="🗑  Uninstall",
-            width=110,
+            text="Uninstall",
+            image=get_icon("purge", size=(14, 14)),
+            compound="left",
+            width=100,
             height=28,
             fg_color="#c0392b",
             hover_color="#e74c3c",
@@ -240,8 +257,7 @@ class PackageTable(ctk.CTkFrame):
             if query and (query not in p.name.lower() and query not in p.version.lower()):
                 continue
 
-            icon = "❄️" if p.source == "Nix" else ("📦" if p.source == "Snap" else "🚀")
-            source_badge = f"{icon} {p.source}"
+            source_badge = p.source
             iid = f"{p.source}::{p.name}"
             self._tree.insert("", "end", iid=iid, values=(p.name, p.version, source_badge))
             visible_count += 1

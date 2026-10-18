@@ -15,6 +15,8 @@ from typing import List, Optional, Sequence
 
 import customtkinter as ctk
 
+from utils.icons import get_icon
+
 
 class ModernConfirmDialog(ctk.CTkToplevel):
     """
@@ -64,11 +66,11 @@ class ModernConfirmDialog(ctk.CTkToplevel):
         header.grid_columnconfigure(1, weight=1)
 
         badge_color = ("#fadbd8", "#78281f") if danger else ("#d4e6f1", "#1b4f72")
-        badge_icon = "💥" if danger else "❓"
+        icon_img = get_icon("purge" if danger else "shield", (28, 28))
         icon_lbl = ctk.CTkLabel(
             header,
-            text=badge_icon,
-            font=ctk.CTkFont(size=28),
+            text="",
+            image=icon_img,
             width=52,
             height=52,
             fg_color=badge_color,
@@ -112,7 +114,7 @@ class ModernConfirmDialog(ctk.CTkToplevel):
                 b_row = ctk.CTkFrame(details_box, fg_color="transparent")
                 b_row.pack(fill="x", padx=12, pady=4)
 
-                bullet_dot = "•" if not danger else "⚠"
+                bullet_dot = "-" if danger else "•"
                 dot_color = "#e74c3c" if danger else "#3498db"
                 ctk.CTkLabel(
                     b_row,
@@ -151,7 +153,7 @@ class ModernConfirmDialog(ctk.CTkToplevel):
             for item_name in items[:6]:  # Show up to 6 targets neatly
                 pill = ctk.CTkLabel(
                     pills_frame,
-                    text=f"📦 {item_name}",
+                    text=item_name,
                     font=ctk.CTkFont(size=11, weight="bold"),
                     fg_color=("gray85", "gray25"),
                     corner_radius=6,
@@ -248,13 +250,13 @@ class ModernAlertDialog(ctk.CTkToplevel):
 
         # Badge icons and colors
         if alert_type == "error":
-            icon_char = "❌"
+            icon_img = get_icon("purge", (24, 24))
             badge_color = ("#fadbd8", "#78281f")
         elif alert_type == "warning":
-            icon_char = "⚠️"
+            icon_img = get_icon("shield", (24, 24))
             badge_color = ("#fdebd0", "#7e5109")
         else:
-            icon_char = "ℹ️"
+            icon_img = get_icon("package", (24, 24))
             badge_color = ("#d4e6f1", "#1b4f72")
 
         header = ctk.CTkFrame(self, fg_color="transparent")
@@ -263,8 +265,8 @@ class ModernAlertDialog(ctk.CTkToplevel):
 
         icon_lbl = ctk.CTkLabel(
             header,
-            text=icon_char,
-            font=ctk.CTkFont(size=24),
+            text="",
+            image=icon_img,
             width=46,
             height=46,
             fg_color=badge_color,

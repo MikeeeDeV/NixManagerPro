@@ -17,6 +17,7 @@ from typing import Optional
 import customtkinter as ctk
 
 from core.catalog import CatalogItem
+from utils.icons import get_icon
 
 
 class AppDetailsDialog(ctk.CTkToplevel):
@@ -63,8 +64,8 @@ class AppDetailsDialog(ctk.CTkToplevel):
         # Icon
         icon_lbl = ctk.CTkLabel(
             header,
-            text="📦",
-            font=ctk.CTkFont(size=36),
+            text="",
+            image=get_icon("package", (32, 32)),
             width=50,
             height=50,
             fg_color=("gray85", "gray20"),
@@ -100,7 +101,7 @@ class AppDetailsDialog(ctk.CTkToplevel):
         # Category Badge
         cat_badge = ctk.CTkLabel(
             badges,
-            text=f"📁 {item.category}",
+            text=item.category,
             font=ctk.CTkFont(size=11, weight="bold"),
             fg_color="#2c3e50",
             text_color="#ecf0f1",
@@ -114,7 +115,7 @@ class AppDetailsDialog(ctk.CTkToplevel):
         src_color = "#3498db" if source == "Flatpak" else ("#e67e22" if source == "Snap" else "#1abc9c")
         src_badge = ctk.CTkLabel(
             badges,
-            text=f"⚡ {source}",
+            text=source,
             font=ctk.CTkFont(size=11, weight="bold"),
             fg_color=src_color,
             text_color="#ffffff",
@@ -127,7 +128,7 @@ class AppDetailsDialog(ctk.CTkToplevel):
         # License Badge
         lic_badge = ctk.CTkLabel(
             badges,
-            text=f"⚖️ {item.license or 'Open Source'}",
+            text=item.license or "Open Source",
             font=ctk.CTkFont(size=11),
             fg_color=("gray80", "gray25"),
             corner_radius=6,
@@ -172,7 +173,7 @@ class AppDetailsDialog(ctk.CTkToplevel):
 
             link_btn = ctk.CTkButton(
                 link_frame,
-                text=f"🌐 {item.homepage}",
+                text=item.homepage,
                 font=ctk.CTkFont(size=12, underline=True),
                 fg_color="transparent",
                 text_color="#3498db",
@@ -199,7 +200,9 @@ class AppDetailsDialog(ctk.CTkToplevel):
         if on_install_callback:
             install_btn = ctk.CTkButton(
                 footer,
-                text="⚡ Install This Application",
+                text="Install Application",
+                image=get_icon("package", (16, 16)),
+                compound="left",
                 width=180,
                 fg_color="#27ae60",
                 hover_color="#2ecc71",

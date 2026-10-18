@@ -24,6 +24,7 @@ import customtkinter as ctk
 
 from core.catalog import CURATED_PACKAGES, CatalogItem, search_catalog, get_catalog_categories
 from core.online_search import OnlineSearchService
+from utils.icons import get_icon
 from utils.notifications import DesktopNotifier
 from .app_details_dialog import AppDetailsDialog
 
@@ -84,8 +85,10 @@ class InstallDialog(ctk.CTkFrame):
 
         online_btn = ctk.CTkButton(
             top_bar,
-            text="🌐 Live Online Search",
-            width=160,
+            text="Live Online Search",
+            image=get_icon("search", (16, 16)),
+            compound="left",
+            width=165,
             fg_color="#8e44ad",
             hover_color="#9b59b6",
             command=self._on_search_online,
@@ -94,8 +97,10 @@ class InstallDialog(ctk.CTkFrame):
 
         upstream_btn = ctk.CTkButton(
             top_bar,
-            text="❄️ Nixpkgs Upstream",
-            width=150,
+            text="Nixpkgs Upstream",
+            image=get_icon("package", (16, 16)),
+            compound="left",
+            width=155,
             command=self._on_search_upstream,
         )
         upstream_btn.pack(side="right", padx=6, pady=8)
@@ -212,8 +217,8 @@ class InstallDialog(ctk.CTkFrame):
 
         self._homepage_btn = ctk.CTkButton(
             meta_row,
-            text="🌐 Homepage ↗",
-            width=110,
+            text="Homepage",
+            width=90,
             height=24,
             font=ctk.CTkFont(size=11),
             fg_color="transparent",
@@ -226,8 +231,8 @@ class InstallDialog(ctk.CTkFrame):
 
         copy_cmd_btn = ctk.CTkButton(
             meta_row,
-            text="📋 Copy Command",
-            width=120,
+            text="Copy Command",
+            width=110,
             height=24,
             font=ctk.CTkFont(size=11),
             fg_color="transparent",
@@ -239,8 +244,8 @@ class InstallDialog(ctk.CTkFrame):
 
         details_btn = ctk.CTkButton(
             meta_row,
-            text="ℹ Details Card",
-            width=110,
+            text="Details Card",
+            width=100,
             height=24,
             font=ctk.CTkFont(size=11),
             fg_color="transparent",
@@ -253,7 +258,9 @@ class InstallDialog(ctk.CTkFrame):
         # Action Button
         self._install_btn = ctk.CTkButton(
             self._card,
-            text="⬇  Install Package",
+            text="Install Package",
+            image=get_icon("package", (16, 16)),
+            compound="left",
             width=180,
             height=40,
             font=ctk.CTkFont(size=13, weight="bold"),
@@ -347,7 +354,7 @@ class InstallDialog(ctk.CTkFrame):
             cmd = f"nix-env -iA {attr}"
             self.clipboard_clear()
             self.clipboard_append(cmd)
-            self._status.configure(text=f"📋 Copied to clipboard: {cmd}")
+            self._status.configure(text=f"Copied to clipboard: {cmd}")
 
     # ---- upstream nixpkgs search fallback ----------------------------------
 
@@ -395,7 +402,7 @@ class InstallDialog(ctk.CTkFrame):
         """Query live online repositories (Flathub & Nix) asynchronously."""
         query = self._query_var.get().strip()
         if not query:
-            self._status.configure(text="⚠️ Please type a search query first (e.g. vlc, spotify, blender, chrome).")
+            self._status.configure(text="Please type a search query first (e.g. vlc, spotify, blender, chrome).")
             return
 
         self._status.configure(text=f"Searching online Flathub & repositories for '{query}'...")
@@ -413,7 +420,7 @@ class InstallDialog(ctk.CTkFrame):
                     "",
                     "end",
                     iid=str(idx),
-                    values=(item.name, f"🌐 {item.category}", item.attr, item.description),
+                    values=(item.name, item.category, item.attr, item.description),
                 )
             self._status.configure(text=f"Found {len(items)} online package result(s) for '{query}'")
             self._log_terminal(f"Loaded {len(items)} online package result(s) from Flathub/remote repositories.")
@@ -449,7 +456,7 @@ class InstallDialog(ctk.CTkFrame):
     def _on_install(self) -> None:
         sel = self._tree.selection()
         if not sel:
-            self._status.configure(text="⚠️ Please click and select a package from the table first.")
+            self._status.configure(text="Please click and select a package from the table first.")
             return
 
         idx = int(sel[0])
@@ -459,7 +466,7 @@ class InstallDialog(ctk.CTkFrame):
         pkg_name = item.name if isinstance(item, CatalogItem) else item.get("name", attr)
 
         self._log.info("Starting installation of %s (%s)", pkg_name, attr)
-        self._status.configure(text=f"⏳ Installing {pkg_name}... check progress below.")
+        self._status.configure(text=f"Installing {pkg_name}... check progress below.")
         self._install_btn.configure(state="disabled")
 
         self._clear_mini_log()
@@ -483,10 +490,10 @@ class InstallDialog(ctk.CTkFrame):
                 asyncio.run(self._pm._exec.run(f"flatpak install -y flathub {attr}"))
             else:
                 asyncio.run(self._pm.install(attr))
-            msg = f"✓ Successfully installed {pkg_name}!"
+            msg = f"Successfully installed {pkg_name}!"
             urgency = "normal"
         except Exception as exc:
-            msg = f"✗ Failed installing {pkg_name}: {exc}"
+            msg = f"Failed installing {pkg_name}: {exc}"
             urgency = "critical"
             self._log.error(msg)
         finally:
