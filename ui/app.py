@@ -86,7 +86,7 @@ class NixManagerApp(ctk.CTk):
 
         ver_badge = ctk.CTkLabel(
             brand_frame,
-            text="PRO v1.6.0",
+            text="PRO v1.7.0",
             font=ctk.CTkFont(size=10, weight="bold"),
             fg_color="#3498db",
             text_color="#ffffff",
