@@ -87,3 +87,12 @@ class Diagnostics:
             return result.stdout.strip() or "(no channels configured)"
         except CommandError as exc:
             return f"Error listing channels: {exc}"
+
+
+    async def daemon_uptime(self) -> str:
+        """Return daemon process uptime from systemd."""
+        try:
+            res = await self._exec.run("systemctl show nix-daemon.service --property=ActiveEnterTimestamp", timeout=10)
+            return res.stdout.strip().replace("ActiveEnterTimestamp=", "")
+        except Exception:
+            return "unknown"
