@@ -41,6 +41,17 @@ class PackageInfo:
     raw_line: str = ""           # original output line
 
 
+@dataclass
+class UpdateCandidate:
+    """Represents an installed application with an upgrade available."""
+
+    name: str
+    current_version: str
+    new_version: str
+    source: str = "Nix"          # "Nix", "Flatpak", "Snap"
+    app_id: str = ""
+
+
 # ---------------------------------------------------------------------------
 # Service
 # ---------------------------------------------------------------------------
@@ -267,6 +278,120 @@ class NixPackageManager:
             raise PackageOperationError(
                 f"Failed to deep purge {pkg.source} package '{pkg.name}': {exc}"
             ) from exc
+
+    async def check_updates(self) -> List[UpdateCandidate]:
+        """
+        Scan Nix, Snap, and Flatpak for available package upgrades.
+        """
+        candidates: List[UpdateCandidate] = []
+
+        # 1. Nix updates check (via dry-run)
+        try:
+            res = await self._exec.run("nix-env -u --dry-run")
+            # Typical line: (would) upgrade 'foo-1.0' to 'foo-1.1'
+            import re
+            for line in res.stdout.splitlines():
+                match = re.search(r"upgrade[d]? ['\"]?(.*?)['\"]? to ['\"]?(.*?)['\"]?", line, re.IGNORECASE)
+                if match:
+                    cur_str, new_str = match.group(1), match.group(2)
+                    # parse name and versions
+                    cur_info = self._parse_line(cur_str)
+                    new_info = self._parse_line(new_str)
+                    candidates.append(
+                        UpdateCandidate(
+                            name=cur_info.name or cur_str,
+                            current_version=cur_info.version or "installed",
+                            new_version=new_info.version or "latest",
+                            source="Nix",
+                        )
+                    )
+        except Exception:
+            pass
+
+        # 2. Snap updates check
+        if shutil.which("snap"):
+            try:
+                res = await self._exec.run("snap refresh --list")
+                lines = [l.strip() for l in res.stdout.splitlines() if l.strip()]
+                # Skip header if present
+                for line in lines[1:]:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        candidates.append(
+                            UpdateCandidate(
+                                name=parts[0],
+                                current_version="installed",
+                                new_version=parts[1],
+                                source="Snap",
+                            )
+                        )
+            except Exception:
+                pass
+
+        # 3. Flatpak updates check
+        if shutil.which("flatpak"):
+            try:
+                res = await self._exec.run("flatpak remote-ls --updates")
+                for line in res.stdout.splitlines():
+                    line = line.strip()
+                    if line:
+                        parts = line.split()
+                        app_id = parts[0]
+                        version = parts[1] if len(parts) > 1 else "latest"
+                        candidates.append(
+                            UpdateCandidate(
+                                name=app_id.split(".")[-1] if "." in app_id else app_id,
+                                current_version="installed",
+                                new_version=version,
+                                source="Flatpak",
+                                app_id=app_id,
+                            )
+                        )
+            except Exception:
+                pass
+
+        return candidates
+
+    async def upgrade_candidate(self, candidate: UpdateCandidate) -> str:
+        """Upgrade a single package candidate."""
+        try:
+            if candidate.source == "Snap":
+                res = await self._exec.run(f"snap refresh {candidate.name}")
+                return res.stdout or f"Updated snap: {candidate.name}"
+            elif candidate.source == "Flatpak":
+                target = candidate.app_id or candidate.name
+                res = await self._exec.run(f"flatpak update -y {target}")
+                return res.stdout or f"Updated flatpak: {target}"
+            else:
+                res = await self._exec.run(f"nix-env -u {candidate.name}")
+                return res.stdout or f"Updated nix package: {candidate.name}"
+        except CommandError as exc:
+            raise PackageOperationError(f"Upgrade failed for {candidate.name}: {exc}") from exc
+
+    async def upgrade_all_generic(self) -> str:
+        """Upgrade all packages across Nix, Snap, and Flatpak."""
+        logs = []
+        try:
+            res_nix = await self._exec.run("nix-env -u")
+            logs.append(f"Nix Upgrade: {res_nix.stdout.strip() or 'Success'}")
+        except Exception as e:
+            logs.append(f"Nix Upgrade: {e}")
+
+        if shutil.which("flatpak"):
+            try:
+                res_flat = await self._exec.run("flatpak update -y")
+                logs.append(f"Flatpak Upgrade: {res_flat.stdout.strip() or 'Success'}")
+            except Exception as e:
+                logs.append(f"Flatpak Upgrade: {e}")
+
+        if shutil.which("snap"):
+            try:
+                res_snap = await self._exec.run("snap refresh")
+                logs.append(f"Snap Upgrade: {res_snap.stdout.strip() or 'Success'}")
+            except Exception as e:
+                logs.append(f"Snap Upgrade: {e}")
+
+        return "\n".join(logs)
 
     async def upgrade_all(self) -> str:
         """Upgrade all packages in the active profile to latest channel versions."""
