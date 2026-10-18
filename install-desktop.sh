@@ -46,10 +46,10 @@ if [ -f "${SCRIPT_DIR}/assets/nixmanager.svg" ]; then
     cp -f "${SCRIPT_DIR}/assets/nixmanager.svg" "${ICON_DIR}/nixmanager.svg"
 fi
 if [ -f "${SCRIPT_DIR}/assets/nixmanager.png" ]; then
-    mkdir -p "${HOME}/.local/share/icons/hicolor/128x128/apps"
-    cp -f "${SCRIPT_DIR}/assets/nixmanager.png" "${HOME}/.local/share/icons/hicolor/128x128/apps/nixmanager.png"
-    mkdir -p "${HOME}/.local/share/icons/hicolor/256x256/apps"
-    cp -f "${SCRIPT_DIR}/assets/nixmanager.png" "${HOME}/.local/share/icons/hicolor/256x256/apps/nixmanager.png"
+    for size in 48x48 64x64 128x128 256x256; do
+        mkdir -p "${HOME}/.local/share/icons/hicolor/${size}/apps"
+        cp -f "${SCRIPT_DIR}/assets/nixmanager.png" "${HOME}/.local/share/icons/hicolor/${size}/apps/nixmanager.png"
+    done
     mkdir -p "${HOME}/.local/share/pixmaps"
     cp -f "${SCRIPT_DIR}/assets/nixmanager.png" "${HOME}/.local/share/pixmaps/nixmanager.png"
 fi

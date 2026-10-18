@@ -31,3 +31,17 @@ def test_resolve_rich_details_fallback():
     item = resolve_rich_details("some-custom-tool", source="Snap")
     assert item.name == "Some-Custom-Tool"
     assert "Snap" in item.description
+
+
+def test_app_details_dialog_safe_init():
+    import customtkinter as ctk
+    from ui.app_details_dialog import AppDetailsDialog
+    root = ctk.CTk()
+    item = resolve_rich_details("git", source="Nix")
+    dialog = AppDetailsDialog(root, item=item, source="Nix")
+    assert dialog.title().startswith("Git")
+    # Verify _safe_grab does not raise
+    dialog._safe_grab()
+    dialog.destroy()
+    root.destroy()
+

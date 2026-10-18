@@ -9,6 +9,7 @@ and quick actions for packages.
 
 from __future__ import annotations
 
+from pathlib import Path
 import tkinter as tk
 import webbrowser
 from typing import Optional
@@ -33,9 +34,24 @@ class AppDetailsDialog(ctk.CTkToplevel):
         self.geometry("540x460")
         self.resizable(False, False)
 
-        # Center dialog relative to parent
-        self.transient(parent)
-        self.grab_set()
+        # Center dialog relative to toplevel parent window
+        try:
+            top_parent = parent.winfo_toplevel() if hasattr(parent, "winfo_toplevel") else parent
+            self.transient(top_parent)
+        except Exception:
+            pass
+
+        # Load window icon
+        icon_path = Path(__file__).resolve().parent.parent / "assets" / "nixmanager.png"
+        if icon_path.exists():
+            try:
+                self._app_icon = tk.PhotoImage(file=str(icon_path))
+                self.iconphoto(True, self._app_icon)
+            except Exception:
+                pass
+
+        # Schedule safe grab after window mapping to avoid TclError: grab failed
+        self.after(60, self._safe_grab)
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
@@ -190,3 +206,12 @@ class AppDetailsDialog(ctk.CTkToplevel):
                 command=lambda: (self.destroy(), on_install_callback(item)),
             )
             install_btn.pack(side="right")
+
+    def _safe_grab(self) -> None:
+        """Safely acquire modal focus once window is mapped and viewable."""
+        try:
+            if self.winfo_exists():
+                self.grab_set()
+        except Exception:
+            pass
+
