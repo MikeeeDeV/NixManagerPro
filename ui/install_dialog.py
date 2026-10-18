@@ -16,6 +16,9 @@ from typing import Dict, List, Optional, TYPE_CHECKING
 
 import customtkinter as ctk
 
+from utils.notifications import DesktopNotifier
+
+
 if TYPE_CHECKING:
     from core.package_manager import NixPackageManager
     from utils.worker import WorkerPool
@@ -172,7 +175,10 @@ class InstallDialog(ctk.CTkFrame):
 
         if self._console_cb:
             self._console_cb("info", msg)
+
+        DesktopNotifier.send("Nix Package Manager", msg)
         self.after(0, self._install_done, msg)
+
 
     def _install_done(self, msg: str) -> None:
         self._status.configure(text=msg)

@@ -20,7 +20,9 @@ from typing import TYPE_CHECKING
 
 import customtkinter as ctk
 
+from utils.notifications import DesktopNotifier
 from .package_table import PackageTable
+
 
 if TYPE_CHECKING:
     from core.diagnostics import Diagnostics
@@ -163,5 +165,8 @@ class Dashboard(ctk.CTkFrame):
 
         if self._console_cb:
             self._console_cb("info", msg)
+
+        DesktopNotifier.send("Nix Garbage Collection", msg)
         # Refresh the store‑size card
         self.after(500, self.refresh_all)
+
