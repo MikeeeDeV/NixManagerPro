@@ -25,7 +25,10 @@
 
 Running the **Nix Package Manager** on multi-user Ubuntu or Debian installations provides declarative package isolation alongside native `apt`. However, managing transactions, reverting bad packages, tracking disk consumption across `/nix/store`, and editing channels via pure CLI can be challenging.
 
-**NixManager Pro** transforms the Nix experience into a state-of-the-art desktop tool:
+**NixManager Pro** transforms the Nix experience into a state-of-the-art desktop tool modeled after **WingetUI / UniGetUI**:
+- **🛍️ WingetUI-Style App Store (Discover Software):** Instant catalog of 40+ curated packages categorized by Development, Internet, Shell, Runtimes, Media, and Utilities with 0ms delay.
+- **📑 Detailed Package Drawer:** Rich metadata card showing homepage link, copyable nix command, license, category badge, and 1-click install.
+- **🧭 Modern Left Sidebar Navigation:** Swiftly switch views between Discover, Installed, Updates, Generations, Channels, and Live Terminal.
 - **⚡ Atomic Generations & Rollback:** Browse historical states and revert transactions with one click.
 - **📡 Channels Manager:** Inspect, subscribe, remove, and pull updates from upstream Nix channels.
 - **📤 Declarative Exporter:** Generate reproducible `shell.nix` or JSON manifests from installed software.
@@ -40,6 +43,8 @@ Running the **Nix Package Manager** on multi-user Ubuntu or Debian installations
 
 | Capability | Module | User Benefit |
 |---|---|---|
+| **🛍️ WingetUI Discover Store** | `core/catalog.py` & `ui/install_dialog.py` | 0ms instant catalog with categories, search filtering, and rich package inspector. |
+| **🧭 Persistent Sidebar** | `ui/app.py` | Clean WingetUI navigation with active tab indicator and real-time status pill. |
 | **📊 System Telemetry** | `core/diagnostics.py` | Live `nix-daemon.service` status, uptime, store disk size, and channel inspection. |
 | **⏱️ Generations & Rollback** | `core/generations.py` | Visual timeline of all package transactions with instant rollback (`--rollback`) and generation switching. |
 | **📦 Package Manager & Upgrades** | `core/package_manager.py` | List installed packages, execute single or batch uninstalls, and run one-click upgrades (`nix-env -u`). |
@@ -63,6 +68,7 @@ graph TD
     Utils -.-> Core
 
     subgraph "Core Services (core/)"
+        CAT[catalog.py<br/>Curated Software Store Data]
         CE[command_executor.py<br/>Async Pipe Streamer]
         PM[package_manager.py<br/>Package CRUD & Upgrade]
         GEN[generations.py<br/>Generations & Rollback]
@@ -72,12 +78,12 @@ graph TD
     end
 
     subgraph "Presentation Layer (ui/)"
-        APP[app.py<br/>Root Container & Theme Switcher]
-        DASH[dashboard.py<br/>Telemetry Cards & GC]
+        APP[app.py<br/>WingetUI Sidebar & Status Bar]
+        INST[install_dialog.py<br/>Discover Store & Package Details]
         PKGT[package_table.py<br/>Installed Packages & Exporter]
+        DASH[dashboard.py<br/>Telemetry Cards & Upgrades]
         GENV[generations_view.py<br/>Timeline & Rollback Action Bar]
         CHANV[channels_view.py<br/>Channel Subscriptions & Updater]
-        INST[install_dialog.py<br/>Search & Install Panel]
         CONS[console_log.py<br/>Color-coded Real-time Stream]
     end
 
@@ -110,6 +116,10 @@ pip install -r requirements.txt
 ```
 
 🎉 **NixManager Pro** will immediately appear in your Ubuntu App Grid under **System > Package Management**!
+Or simply run:
+```bash
+nixmanager
+```
 
 ---
 
@@ -125,37 +135,40 @@ python main.py
 
 ---
 
-## 💻 Usage & Tab Breakdown
+## 💻 WingetUI-Style Views Breakdown
 
-### 1. 📊 Dashboard
-- Real-time indicator for `nix-daemon.service` health.
-- Store disk usage and channel summaries.
-- One-click **Garbage Collection (`nix-store --gc`)** to reclaim disk space safely.
+### 1. 🔍 Discover Software (Store)
+- Instant catalog of 40+ curated popular developer packages and desktop apps.
+- Filter by category pills (`All`, `Development`, `Internet`, `System & Shell`, `Runtimes`, `Media`, `Utilities`).
+- Real-time search by package name, attribute, or description with fallback to online nix search.
+- **Package Details Card**: Inspect package title, attribute, category badge, license, and description.
+- **Action Buttons**: Direct `🌐 Homepage` browser opener, `📋 Copy Command`, and 1-click `⬇ Install Package`.
 
-### 2. 📦 Packages & Export
-- View all installed packages and their versions.
+### 2. 📦 Installed Packages
+- Live list of all packages installed in your user profile.
+- Filter search box to find specific installed software immediately.
 - **🚀 Upgrade All**: Upgrades every installed derivation to the latest available upstream release.
 - **📤 Export shell.nix**: Generates a shareable, declarative Nix expression reproducing your exact environment.
 - **🗑 Uninstall**: Single or multi-selection package removal with confirmation prompts.
 
-### 3. ⏱️ Generations & Instant Rollback
+### 3. 🔄 Updates & Health (Dashboard)
+- Real-time indicator for `nix-daemon.service` health.
+- Store disk usage and channel summaries.
+- One-click **Garbage Collection (`nix-store --gc`)** to reclaim disk space safely.
+
+### 4. ⏱️ Generations & Instant Rollback
 - Displays all historical profile states created by transactions.
 - Highlights the currently active `(current)` generation.
 - **⚡ Instant Rollback**: Reverts your entire environment to the state prior to your last change.
 - **Switch to Selected**: Jump backward or forward to any historical generation.
 - **🧹 Delete Old**: Purge outdated generations to free up disk storage.
 
-### 4. 📡 Channels Manager
+### 5. 📡 Channels Manager
 - View registered channels (e.g. `nixpkgs`, `nixos-unstable`).
 - Subscribe to new channel URLs with one click.
 - **⬇ Update All Channels**: Pull latest channel definitions with real-time download output.
 
-### 5. ⬇ Search & Install
-- Search packages across the entire Nix repository asynchronously.
-- Inspect attribute paths (e.g. `nixpkgs.ripgrep`, `nixpkgs.neovim`).
-- Install with automated desktop toast notifications on completion.
-
-### 6. 🖥 Console
+### 6. 🖥 Live Console Stream
 - Dedicated terminal view color-coding stdout (`green`) and stderr (`red`).
 - Monospaced timestamped log stream providing complete audit visibility.
 
