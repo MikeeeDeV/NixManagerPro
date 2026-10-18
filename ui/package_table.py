@@ -23,6 +23,7 @@ import customtkinter as ctk
 from core.catalog import resolve_rich_details
 from core.exporter import NixEnvironmentExporter
 from .app_details_dialog import AppDetailsDialog
+from .modern_dialog import show_alert_dialog, show_confirm_dialog
 
 
 if TYPE_CHECKING:
@@ -253,12 +254,7 @@ class PackageTable(ctk.CTkFrame):
 
     def _on_export(self) -> None:
         if not self._cached_packages:
-            messagebox.showinfo("Export", "No installed packages found to export.")
-            return
-
-        nix_pkgs = [p for p in self._cached_packages if p.source == "Nix"]
-        if not self._cached_packages:
-            messagebox.showinfo("Export Stack", "No installed packages detected to export.")
+            show_alert_dialog(self, "Export", "No installed packages found to export.", alert_type="info")
             return
 
         file_path = filedialog.asksaveasfilename(
@@ -282,13 +278,15 @@ class PackageTable(ctk.CTkFrame):
             self._log.info("Exported software stack to: %s", saved_path)
             if self._console_cb:
                 self._console_cb("info", f"✓ Software stack ({len(pkgs_to_export)} apps) exported to: {saved_path}")
-            messagebox.showinfo(
+            show_alert_dialog(
+                self,
                 "Export Successful",
-                f"Software stack successfully exported!\n\nLocation:\n{saved_path}\n\nTotal packages saved: {len(pkgs_to_export)}",
+                f"Software stack successfully exported to:\n{saved_path}\n\nTotal packages saved: {len(pkgs_to_export)}",
+                alert_type="info",
             )
         except Exception as exc:
             self._log.error("Failed to export stack: %s", exc)
-            messagebox.showerror("Export Failed", f"Could not write file:\n{exc}")
+            show_alert_dialog(self, "Export Failed", f"Could not write file:\n{exc}", alert_type="error")
 
     def _on_restore(self) -> None:
         """Import and batch-restore a previously exported software stack manifest."""
@@ -306,21 +304,19 @@ class PackageTable(ctk.CTkFrame):
         try:
             packages = NixEnvironmentExporter.import_from_file(file_path)
             if not packages:
-                messagebox.showwarning("Empty Stack", "No package entries found in the selected manifest.")
+                show_alert_dialog(self, "Empty Stack", "No package entries found in the selected manifest.", alert_type="warning")
                 return
 
-            preview_lines = [f"• {p.name} [{p.source}]" for p in packages[:15]]
-            if len(packages) > 15:
-                preview_lines.append(f"... and {len(packages) - 15} more.")
-
-            prompt = (
-                f"Software Stack Restoration:\n\n"
-                f"Found {len(packages)} packages to restore.\n\n"
-                + "\n".join(preview_lines)
-                + "\n\nDo you want to proceed with batch restoration now?"
+            item_names = [f"{p.name} [{p.source}]" for p in packages]
+            confirmed = show_confirm_dialog(
+                parent=self,
+                title="Confirm Batch Restoration",
+                message=f"Found {len(packages)} packages to restore. Do you want to proceed with batch restoration now?",
+                items=item_names,
+                confirm_text="Restore All",
+                cancel_text="Cancel",
             )
-
-            if not messagebox.askyesno("Confirm Batch Restoration", prompt):
+            if not confirmed:
                 return
 
             if self._console_cb:
@@ -348,13 +344,17 @@ class PackageTable(ctk.CTkFrame):
 
         except Exception as exc:
             self._log.error("Failed to load stack: %s", exc)
-            messagebox.showerror("Import Error", f"Failed to read stack manifest:\n{exc}")
+            show_alert_dialog(self, "Import Error", f"Failed to read stack manifest:\n{exc}", alert_type="error")
 
     def _on_upgrade_all(self) -> None:
-        if not messagebox.askyesno(
-            "Upgrade Packages",
-            "This will execute 'nix-env -u' to upgrade all Nix packages in your profile to their latest versions.\nProceed?",
-        ):
+        confirmed = show_confirm_dialog(
+            parent=self,
+            title="Upgrade All Packages",
+            message="This will execute 'nix-env -u' to upgrade all Nix packages in your profile to their latest versions.",
+            confirm_text="Upgrade All",
+            cancel_text="Cancel",
+        )
+        if not confirmed:
             return
 
         self._log.info("User requested upgrade of all packages")
@@ -402,10 +402,10 @@ class PackageTable(ctk.CTkFrame):
             self._ctx_menu.tk_popup(event.x_root, event.y_root)
 
     def _on_uninstall(self) -> None:
-        """Standard uninstall (مسح عادي)."""
+        """Standard uninstall."""
         selection = self._tree.selection()
         if not selection:
-            messagebox.showinfo("Uninstall", "Please select one or more packages from the list first.")
+            show_alert_dialog(self, "Uninstall", "Please select one or more packages from the list first.", alert_type="warning")
             return
 
         selected_pkgs: list[PackageInfo] = []
@@ -418,13 +418,17 @@ class PackageTable(ctk.CTkFrame):
         if not selected_pkgs:
             return
 
-        labels = [f"• {p.name} [{p.source}]" for p in selected_pkgs]
-        prompt = (
-            "Standard Uninstall (مسح عادي):\n\n"
-            "This will uninstall the package binaries while preserving your application settings and configs.\n\n"
-            "Target package(s):\n" + "\n".join(labels) + "\n\nProceed?"
+        item_tags = [f"{p.name} [{p.source}]" for p in selected_pkgs]
+        confirmed = show_confirm_dialog(
+            parent=self,
+            title="Confirm Package Uninstall",
+            message="Uninstall selected package binaries from your environment? Application settings and caches will be kept.",
+            items=item_tags,
+            danger=False,
+            confirm_text="Uninstall",
+            cancel_text="Cancel",
         )
-        if not messagebox.askyesno("Confirm Standard Uninstall", prompt):
+        if not confirmed:
             return
 
         for pkg in selected_pkgs:
@@ -444,10 +448,10 @@ class PackageTable(ctk.CTkFrame):
         self.after(500, self.refresh)
 
     def _on_purge(self) -> None:
-        """Deep Purge (مسح نهائي شامل) - Eradicates package, configs, cache, and store links."""
+        """Deep Purge - Eradicates package, configs, cache, and store links."""
         selection = self._tree.selection()
         if not selection:
-            messagebox.showinfo("Deep Purge", "Please select one or more packages from the list first.")
+            show_alert_dialog(self, "Deep Purge", "Please select one or more packages from the list first.", alert_type="warning")
             return
 
         selected_pkgs: list[PackageInfo] = []
@@ -460,17 +464,24 @@ class PackageTable(ctk.CTkFrame):
         if not selected_pkgs:
             return
 
-        labels = [f"• {p.name} [{p.source}]" for p in selected_pkgs]
-        prompt = (
-            "⚠️ DEEP PURGE WARNING (مسح نهائي شامل):\n\n"
-            "This will completely erase the selected package(s) as if never installed:\n"
-            "• Remove package binaries\n"
-            "• Delete user configuration & cache directories\n"
-            "• Remove desktop application shortcuts\n"
-            "• Trigger deep garbage collection to free disk space\n\n"
-            "Target package(s):\n" + "\n".join(labels) + "\n\nAre you sure you want to completely erase them?"
+        item_tags = [f"{p.name} [{p.source}]" for p in selected_pkgs]
+        consequences = [
+            "Remove package binaries and executables from environment",
+            "Delete user configuration and cache directories (~/.config, ~/.cache)",
+            "Remove desktop application shortcuts and launcher entries",
+            "Trigger deep store garbage collection to free disk space",
+        ]
+        confirmed = show_confirm_dialog(
+            parent=self,
+            title="Confirm Deep Purge",
+            message="This will completely eradicate the selected package(s) from your system as if never installed:",
+            details=consequences,
+            items=item_tags,
+            danger=True,
+            confirm_text="Eradicate & Purge",
+            cancel_text="Cancel",
         )
-        if not messagebox.askyesno("Confirm Deep Purge", prompt):
+        if not confirmed:
             return
 
         for pkg in selected_pkgs:

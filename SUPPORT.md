@@ -49,8 +49,8 @@ Before reaching out, check whether our built-in diagnostics can resolve your iss
 
 ### Q: What is the difference between "Uninstall" and "Deep Purge"?
 **A:**
-* **Uninstall (مسح عادي)**: Unlinks the package from your profile without touching personal config directories or cache.
-* **Deep Purge (مسح نهائي)**: Completely unlinks the package and removes application caches, user configurations from `~/.config` and `~/.cache`, and triggers Nix store garbage collection.
+* **Standard Uninstall**: Unlinks the package binaries from your profile without touching personal config directories or cache.
+* **Deep Purge**: Completely unlinks the package, wipes application caches and user configurations from `~/.config` and `~/.cache`, and triggers Nix store garbage collection.
 
 ### Q: How do I backup my applications when moving to a new computer?
 **A:**

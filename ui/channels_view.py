@@ -15,13 +15,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import ttk
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 import customtkinter as ctk
 
 from core.channels import CURATED_CHANNEL_PRESETS, ChannelInfo, ChannelPreset, NixChannelManager
 from utils.notifications import DesktopNotifier
+from .modern_dialog import show_alert_dialog, show_confirm_dialog
 
 if TYPE_CHECKING:
     from utils.worker import WorkerPool
@@ -328,7 +329,7 @@ class ChannelsView(ctk.CTkFrame):
         name = self._name_var.get().strip()
         url = self._url_var.get().strip()
         if not name or not url:
-            messagebox.showwarning("Missing Info", "Please enter both channel name and URL.")
+            show_alert_dialog(self, "Missing Info", "Please enter both channel name and URL.", alert_type="warning")
             return
 
         self._add_btn.configure(state="disabled")
@@ -352,11 +353,19 @@ class ChannelsView(ctk.CTkFrame):
     def _on_remove(self) -> None:
         sel = self._tree.selection()
         if not sel:
-            messagebox.showinfo("Select Channel", "Please select a channel from the table to remove.")
+            show_alert_dialog(self, "Select Channel", "Please select a channel from the table to remove.", alert_type="info")
             return
         name = str(sel[0])
 
-        if not messagebox.askyesno("Confirm Removal", f"Are you sure you want to remove channel '{name}'?"):
+        confirmed = show_confirm_dialog(
+            parent=self,
+            title="Confirm Channel Removal",
+            message=f"Are you sure you want to remove channel '{name}'?",
+            danger=True,
+            confirm_text="Remove Channel",
+            cancel_text="Cancel",
+        )
+        if not confirmed:
             return
 
         self._log_stream(f"Removing channel subscription '{name}'...")
@@ -377,7 +386,7 @@ class ChannelsView(ctk.CTkFrame):
     def _on_update_selected(self) -> None:
         sel = self._tree.selection()
         if not sel:
-            messagebox.showinfo("Select Channel", "Please select a channel from the table to update.")
+            show_alert_dialog(self, "Select Channel", "Please select a channel from the table to update.", alert_type="info")
             return
         name = str(sel[0])
 
@@ -442,10 +451,14 @@ class ChannelsView(ctk.CTkFrame):
         self._worker.submit_async(_upd_all, on_success=_done, on_error=_err)
 
     def _on_rollback(self) -> None:
-        if not messagebox.askyesno(
-            "Confirm Rollback",
-            "Rollback channels to previous generation via 'nix-channel --rollback'?"
-        ):
+        confirmed = show_confirm_dialog(
+            parent=self,
+            title="Confirm Channel Rollback",
+            message="Rollback channels to previous generation via 'nix-channel --rollback'?",
+            confirm_text="Rollback",
+            cancel_text="Cancel",
+        )
+        if not confirmed:
             return
 
         self._log_stream("Rolling back channels to previous generation...")
