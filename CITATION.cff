@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use or reference NixManager Pro in academic research or software distributions, please cite it as below."
+authors:
+  - family-names: "Ayman"
+    given-names: "Mohamed"
+    email: "alsghyrblhh@gmail.com"
+    alias: "MikeeeDeV"
+title: "NixManager Pro: WingetUI-grade Desktop Package Manager and System Control Center for Nix"
+version: 1.7.0
+date-released: 2026-10-18
+url: "https://github.com/MikeeeDeV/NixManagerPro"
+repository-code: "https://github.com/MikeeeDeV/NixManagerPro"
+keywords:
+  - nix
+  - nixos
+  - "package manager"
+  - wingetui
+  - desktop
+  - gui
+  - linux
+license: MIT
