@@ -29,6 +29,7 @@ class AppConfig:
     colour_theme: str = "blue"          # CustomTkinter built‑in themes
     window_width: int = 1280
     window_height: int = 820
+    export_manifest_path: str = "installed_manifest.json"
 
 
 _CACHED: Optional[AppConfig] = None
