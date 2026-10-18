@@ -1,0 +1,42 @@
+name: "✨ Feature Request"
+description: "Suggest a new idea or capability for NixManager Pro."
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We love new ideas! Share your suggestion below to help improve the Nix desktop management experience.
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem or User Need"
+      description: "Is your feature request related to a problem or missing workflow? Please describe."
+      placeholder: "I'm always frustrated when I want to inspect derivation logs directly from the GUI..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: "Proposed Solution"
+      description: "A clear and concise description of what you want to happen."
+      placeholder: "Add a button to view build derivation details in a dedicated inspector tab..."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives Considered"
+      description: "Any alternative solutions, tools, or workarounds you have considered."
+      placeholder: "Running `nix log` manually in the CLI..."
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Checklist"
+      options:
+        - label: "I have searched existing issues to verify this feature hasn't already been proposed."
+          required: true
+        - label: "I would be willing to contribute code or test a pull request implementing this feature."
+          required: false

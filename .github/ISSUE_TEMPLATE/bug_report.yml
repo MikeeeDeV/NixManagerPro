@@ -1,0 +1,77 @@
+name: "🐛 Bug Report"
+description: "File an actionable bug report with logs and system environment details."
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report an issue! Please fill out the form below to help us diagnose and resolve the bug as quickly as possible.
+  - type: textarea
+    id: description
+    attributes:
+      label: "Bug Description"
+      description: "A clear and concise description of what the bug is."
+      placeholder: "When clicking on 'Deep Purge' for an uninstalled package, the app..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "Steps to Reproduce"
+      description: "Step-by-step instructions to reproduce the behavior."
+      placeholder: |
+        1. Open NixManager Pro.
+        2. Navigate to 'Installed Packages'.
+        3. Select 'discord' and click 'Deep Purge'.
+        4. See error.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Expected Behavior"
+      description: "A clear description of what you expected to happen."
+      placeholder: "The confirmation modal should appear and successfully purge user cache and state."
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: "Operating System / Distribution"
+      description: "Which Linux distribution are you running?"
+      options:
+        - "Ubuntu (GNOME Wayland)"
+        - "Ubuntu (GNOME X11)"
+        - "NixOS"
+        - "Arch Linux"
+        - "Fedora"
+        - "Debian"
+        - "Other Linux Distribution"
+    validations:
+      required: true
+  - type: input
+    id: nix-version
+    attributes:
+      label: "Nix Version"
+      description: "Output of `nix --version`"
+      placeholder: "nix (Nix) 2.18.1"
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Terminal or Console Logs"
+      description: "Paste relevant output from 'Live Console Stream' tab or terminal logs."
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Pre-submission Checklist"
+      options:
+        - label: "I have verified that this issue does not duplicate an existing open or closed issue."
+          required: true
+        - label: "I have tested with the latest NixManager Pro release."
+          required: true

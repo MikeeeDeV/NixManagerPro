@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub Discussions & Questions
+    url: https://github.com/MikeeeDeV/NixManagerPro/discussions
+    about: Ask questions, share configuration stacks, or chat with the community.
+  - name: Security Vulnerability Reporting
+    url: mailto:alsghyrblhh@gmail.com
+    about: Please report security vulnerabilities privately according to SECURITY.md.
