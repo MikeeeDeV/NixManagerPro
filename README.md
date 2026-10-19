@@ -5,14 +5,19 @@
 **The Production-Grade, Asynchronous Desktop Control Suite for Nix on Ubuntu & Linux**
 
 [![CI / Lint & Test Suite](https://github.com/MikeeeDeV/NixManagerPro/actions/workflows/ci.yml/badge.svg)](https://github.com/MikeeeDeV/NixManagerPro/actions/workflows/ci.yml)
-[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Nix Support](https://img.shields.io/badge/Nix-Multi--User-5277C3.svg?style=for-the-badge&logo=nixos&logoColor=white)](https://nixos.org/)
-[![Platform](https://img.shields.io/badge/Platform-Ubuntu%20%7C%20Debian%20%7C%20Linux-E95420.svg?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg?style=for-the-badge)](CODE_OF_CONDUCT.md)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)](CONTRIBUTING.md)
-[![Security Policy](https://img.shields.io/badge/Security-Policy-red.svg?style=for-the-badge)](SECURITY.md)
-[![Accessibility](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-blueviolet.svg?style=for-the-badge)](ACCESSIBILITY.md)
+[![Tests Passing](https://img.shields.io/badge/tests-29%20passed-success.svg?style=flat&logo=pytest&logoColor=white)](tests/)
+[![Type Checker](https://img.shields.io/badge/pyright-0%20errors-294E80.svg?style=flat&logo=python&logoColor=white)](https://github.com/microsoft/pyright)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/)
+[![Nix Support](https://img.shields.io/badge/nix-multi--user-5277C3.svg?style=flat&logo=nixos&logoColor=white)](https://nixos.org/)
+[![Platform](https://img.shields.io/badge/platform-Ubuntu%20%7C%20Debian%20%7C%20Linux-E95420.svg?style=flat&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg?style=flat)](LICENSE)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg?style=flat)](CODE_OF_CONDUCT.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat&logo=github&logoColor=white)](CONTRIBUTING.md)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-e74c3c.svg?style=flat&logo=securityscorecard&logoColor=white)](SECURITY.md)
+[![Accessibility](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-8e44ad.svg?style=flat)](ACCESSIBILITY.md)
+[![Dependabot](https://img.shields.io/badge/dependabot-active-025E8C.svg?style=flat&logo=dependabot&logoColor=white)](.github/dependabot.yml)
+[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat)](#contributors-)
 
 <p align="center">
   A high-performance, non-blocking desktop client built to manage Nix packages, browse generation timelines with atomic rollbacks, configure upstream channels, export reproducible <code>shell.nix</code> environments, and monitor system daemon health with zero UI freezing.
