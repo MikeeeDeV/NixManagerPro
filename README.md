@@ -5,7 +5,7 @@
 **The Production-Grade, Asynchronous Desktop Control Suite for Nix on Ubuntu & Linux**
 
 [![CI / Lint & Test Suite](https://github.com/MikeeeDeV/NixManagerPro/actions/workflows/ci.yml/badge.svg)](https://github.com/MikeeeDeV/NixManagerPro/actions/workflows/ci.yml)
-[![Tests Passing](https://img.shields.io/badge/tests-29%20passed-success.svg?style=flat&logo=pytest&logoColor=white)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-31%20passed-success.svg?style=flat&logo=pytest&logoColor=white)](tests/)
 [![Type Checker](https://img.shields.io/badge/pyright-0%20errors-294E80.svg?style=flat&logo=python&logoColor=white)](https://github.com/microsoft/pyright)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![Nix Support](https://img.shields.io/badge/nix-multi--user-5277C3.svg?style=flat&logo=nixos&logoColor=white)](https://nixos.org/)

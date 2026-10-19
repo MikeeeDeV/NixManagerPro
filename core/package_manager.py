@@ -12,6 +12,7 @@ Every method is an ``async`` coroutine that delegates to the shared
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import shutil
 from dataclasses import dataclass
@@ -82,21 +83,56 @@ class NixPackageManager:
             )
         return PackageInfo(name=line, version="?", source="Nix", raw_line=line)
 
-    async def list_installed(self) -> List[PackageInfo]:
+    async def list_flake_profiles(self) -> List[PackageInfo]:
         """
-        Parse the output of ``nix-env -q`` and return structured Nix package data.
+        Query modern Nix 2.4+ flakes profile via ``nix profile list --json``.
         """
         try:
-            result = await self._exec.run("nix-env -q")
+            res = await self._exec.run(
+                'nix --extra-experimental-features "nix-command flakes" profile list --json',
+                timeout=6,
+            )
+            data = json.loads(res.stdout)
+            elements = data.get("elements", {})
+            pkgs: List[PackageInfo] = []
+            for name, meta in elements.items():
+                store_paths = meta.get("storePaths", [])
+                version = "flake"
+                if store_paths:
+                    sp = store_paths[0].rstrip("/")
+                    parts = sp.rsplit("-", 1)
+                    if len(parts) == 2 and parts[1] and parts[1][0].isdigit():
+                        version = parts[1]
+                pkgs.append(PackageInfo(name=name, version=version, source="Nix (Flake)", raw_line=f"{name}-{version}"))
+            return pkgs
         except Exception:
             return []
 
+    async def list_installed(self) -> List[PackageInfo]:
+        """
+        Parse the output of ``nix-env -q`` and ``nix profile list`` to return structured Nix package data.
+        """
         packages: List[PackageInfo] = []
-        for line in result.stdout.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            packages.append(self._parse_line(line))
+        try:
+            result = await self._exec.run("nix-env -q")
+            for line in result.stdout.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                packages.append(self._parse_line(line))
+        except Exception:
+            pass
+
+        # Query flakes profile packages if supported
+        try:
+            flake_pkgs = await self.list_flake_profiles()
+            existing_names = {p.name for p in packages}
+            for fp in flake_pkgs:
+                if fp.name not in existing_names:
+                    packages.append(fp)
+        except Exception:
+            pass
+
         return packages
 
     async def list_all_installed(self) -> List[PackageInfo]:
@@ -201,6 +237,8 @@ class NixPackageManager:
                 await self._exec.run(f"flatpak uninstall -y {target}")
             elif pkg.source == "Snap":
                 await self._exec.run(f"snap remove {pkg.name}")
+            elif pkg.source == "Nix (Flake)":
+                await self._exec.run(f'nix --extra-experimental-features "nix-command flakes" profile remove {pkg.name}')
             else:
                 await self._exec.run(f"nix-env -e {pkg.name}")
         except CommandError as exc:
@@ -237,6 +275,10 @@ class NixPackageManager:
                 if os.path.exists(var_dir):
                     shutil.rmtree(var_dir, ignore_errors=True)
                     log_messages.append(f"✓ Purged flatpak app data: {var_dir}")
+
+            elif pkg.source == "Nix (Flake)":
+                await self._exec.run(f'nix --extra-experimental-features "nix-command flakes" profile remove {name}')
+                log_messages.append(f"✓ Removed {name} from Nix flakes profile")
 
             else:
                 # Nix Package Deep Purge

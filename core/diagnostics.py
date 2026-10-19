@@ -96,3 +96,11 @@ class Diagnostics:
             return res.stdout.strip().replace("ActiveEnterTimestamp=", "")
         except Exception:
             return "unknown"
+
+    async def check_flakes_support(self) -> bool:
+        """Check whether modern Nix 2.4+ Flakes and nix-command are available."""
+        try:
+            res = await self._exec.run('nix --extra-experimental-features "nix-command flakes" --version', timeout=5)
+            return "nix (Nix)" in res.stdout
+        except Exception:
+            return False
