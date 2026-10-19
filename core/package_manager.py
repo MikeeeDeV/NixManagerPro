@@ -69,6 +69,19 @@ class NixPackageManager:
 
     # ---- queries ----------------------------------------------------------
 
+    @staticmethod
+    def _parse_line(line: str) -> PackageInfo:
+        line = line.strip()
+        match = re.match(r"^(.+)-(\d.*)$", line)
+        if match:
+            return PackageInfo(
+                name=match.group(1),
+                version=match.group(2),
+                source="Nix",
+                raw_line=line,
+            )
+        return PackageInfo(name=line, version="?", source="Nix", raw_line=line)
+
     async def list_installed(self) -> List[PackageInfo]:
         """
         Parse the output of ``nix-env -q`` and return structured Nix package data.
@@ -83,18 +96,7 @@ class NixPackageManager:
             line = line.strip()
             if not line:
                 continue
-            match = re.match(r"^(.+)-(\d.*)$", line)
-            if match:
-                packages.append(
-                    PackageInfo(
-                        name=match.group(1),
-                        version=match.group(2),
-                        source="Nix",
-                        raw_line=line,
-                    )
-                )
-            else:
-                packages.append(PackageInfo(name=line, version="?", source="Nix", raw_line=line))
+            packages.append(self._parse_line(line))
         return packages
 
     async def list_all_installed(self) -> List[PackageInfo]:

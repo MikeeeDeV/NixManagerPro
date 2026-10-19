@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import functools
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import customtkinter as ctk
 
@@ -23,6 +23,7 @@ try:
     from PIL import Image
     _HAS_PIL = True
 except ImportError:
+    Image = None  # type: ignore
     _HAS_PIL = False
 
 
@@ -30,8 +31,10 @@ _ICONS_DIR = Path(__file__).resolve().parent.parent / "assets" / "icons"
 
 
 @functools.lru_cache(maxsize=64)
-def _load_pil_image(name: str) -> Optional[Image.Image]:
+def _load_pil_image(name: str) -> Optional[Any]:
     """Load and cache decoded PIL Image object in memory."""
+    if not _HAS_PIL or Image is None:
+        return None
     icon_path = _ICONS_DIR / f"{name}.png"
     if not icon_path.exists():
         return None

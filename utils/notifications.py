@@ -22,6 +22,16 @@ class DesktopNotifier:
     _ICON_PATH = Path(__file__).resolve().parents[1] / "assets" / "nixmanager.svg"
 
     @classmethod
+    def info(cls, title: str, message: str) -> bool:
+        """Send normal urgency desktop notification."""
+        return cls.send(title, message, urgency="normal")
+
+    @classmethod
+    def warn(cls, title: str, message: str) -> bool:
+        """Send critical urgency desktop notification."""
+        return cls.send(title, message, urgency="critical")
+
+    @classmethod
     def send(
         cls,
         title: str,
