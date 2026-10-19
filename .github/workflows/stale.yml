@@ -1,0 +1,29 @@
+name: Stale Issues & PRs Manager
+
+on:
+  schedule:
+    - cron: '30 1 * * *' # Run daily at 01:30 UTC
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Stale Bot
+        uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-issue-message: 'This issue has been automatically marked as stale because it has not had recent activity. It will be closed in 7 days if no further activity occurs. Thank you for your contributions!'
+          stale-pr-message: 'This pull request has been automatically marked as stale because it has not had recent activity. It will be closed in 7 days if no further activity occurs. Thank you for your contributions!'
+          close-issue-message: 'This issue was closed because it has been inactive for 7 days since being marked as stale. Feel free to reopen or create a new issue if this is still relevant!'
+          close-pr-message: 'This pull request was closed because it has been inactive for 7 days since being marked as stale.'
+          stale-issue-label: 'stale'
+          stale-pr-label: 'stale'
+          days-before-stale: 30
+          days-before-close: 7
+          exempt-issue-labels: 'pinned,security,enhancement,in-progress'
+          exempt-pr-labels: 'pinned,security,dependencies'

@@ -1,0 +1,28 @@
+name: Contributor Welcome Bot
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Greet New Contributors
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            👋 Welcome to **NixManager Pro**! Thank you for opening your first issue and helping improve our open-source project.
+            
+            Our team will review your report shortly. Feel free to explore our [Contributing Guidelines](https://github.com/MikeeeDeV/NixManagerPro/blob/main/CONTRIBUTING.md) in the meantime.
+          pr-message: |
+            🎉 Congratulations on submitting your first Pull Request to **NixManager Pro**!
+            
+            Our automated CI suite will run validation tests. Please make sure your code aligns with our [Code of Conduct](https://github.com/MikeeeDeV/NixManagerPro/blob/main/CODE_OF_CONDUCT.md). We appreciate your contribution!
