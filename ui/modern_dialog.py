@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import tkinter as tk
-from typing import List, Optional, Sequence
+from typing import Any, List, Optional, Sequence, cast
 
 import customtkinter as ctk
 
@@ -47,7 +47,8 @@ class ModernConfirmDialog(ctk.CTkToplevel):
 
         # Center relative to parent
         try:
-            self.transient(top_parent)
+            if isinstance(top_parent, (tk.Tk, tk.Toplevel)):
+                self.transient(cast(Any, top_parent))
         except Exception:
             pass
 
@@ -244,7 +245,8 @@ class ModernAlertDialog(ctk.CTkToplevel):
         self.grid_columnconfigure(0, weight=1)
 
         try:
-            self.transient(top_parent)
+            if isinstance(top_parent, (tk.Tk, tk.Toplevel)):
+                self.transient(cast(Any, top_parent))
         except Exception:
             pass
 

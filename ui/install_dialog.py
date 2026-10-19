@@ -17,7 +17,7 @@ import logging
 import webbrowser
 import tkinter as tk
 from tkinter import ttk
-from typing import Dict, List, TYPE_CHECKING
+from typing import Any, Dict, List, TYPE_CHECKING
 
 
 import customtkinter as ctk
@@ -50,7 +50,7 @@ class InstallDialog(ctk.CTkFrame):
         self._log = logger
         self._console_cb = console_cb
 
-        self._active_items: List[CatalogItem | Dict[str, str]] = []
+        self._active_items: List[Any] = []
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)

@@ -16,7 +16,7 @@ import subprocess
 import threading
 import tkinter as tk
 import webbrowser
-from typing import Optional
+from typing import Any, Optional, cast
 
 import customtkinter as ctk
 
@@ -73,8 +73,8 @@ class AppDetailsDialog(ctk.CTkToplevel):
 
         # Transient binding to parent
         try:
-            if isinstance(top_parent, tk.Wm):
-                self.transient(top_parent)
+            if isinstance(top_parent, (tk.Tk, tk.Toplevel)):
+                self.transient(cast(Any, top_parent))
         except Exception:
             pass
 
@@ -301,7 +301,7 @@ class AppDetailsDialog(ctk.CTkToplevel):
                                 text=homepage,
                                 state="normal",
                                 text_color="#3498db",
-                                underline=True,
+                                font=ctk.CTkFont(size=12, underline=True),
                                 hover_color=("gray85", "gray20"),
                             )
                         self._source_verified_lbl.configure(text="Verified Snapcraft Package")
@@ -354,7 +354,7 @@ class AppDetailsDialog(ctk.CTkToplevel):
                             text=flathub_url,
                             state="normal",
                             text_color="#3498db",
-                            underline=True,
+                            font=ctk.CTkFont(size=12, underline=True),
                             hover_color=("gray85", "gray20"),
                         )
                         self._source_verified_lbl.configure(text="Verified Flathub Package")

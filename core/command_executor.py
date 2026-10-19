@@ -94,7 +94,7 @@ class AsyncCommandExecutor:
 
     # ---- public API -------------------------------------------------------
 
-    def set_output_callback(self, cb: Callable[[str, str], None]) -> None:
+    def set_output_callback(self, cb: Optional[Callable[[str, str], None]]) -> None:
         """
         Register a function ``cb(stream, line)`` that is invoked for every
         line of output produced by a running command.
