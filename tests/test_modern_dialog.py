@@ -44,3 +44,26 @@ def test_modern_alert_dialog_init():
     dlg._safe_grab()
     dlg.destroy()
     root.destroy()
+
+
+def test_app_details_dialog_init():
+    from core.catalog import CatalogItem
+    from ui.app_details_dialog import AppDetailsDialog
+
+    root = ctk.CTk()
+    item = CatalogItem(
+        name="TestApp",
+        attr="testapp",
+        category="General",
+        description="A test package description",
+        homepage="https://example.com",
+        license="MIT",
+    )
+    dlg = AppDetailsDialog(root, item=item, source="Snap")
+    assert dlg.title() == "TestApp — Package Details"
+    assert dlg._name_lbl.cget("text") == "TestApp"
+    assert dlg._desc_lbl.cget("text") == "A test package description"
+    dlg._safe_grab()
+    dlg.destroy()
+    root.destroy()
+
