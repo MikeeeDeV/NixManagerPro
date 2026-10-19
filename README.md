@@ -214,7 +214,9 @@ NixManager Pro reads `config.json` from the project root:
 
 ---
 
-## 🤝 Contributing
+---
+
+## 🤝 Contributing & Community
 
 Pull requests, feature requests, and bug reports are welcome!
 
@@ -223,6 +225,41 @@ Pull requests, feature requests, and bug reports are welcome!
 3. Commit your Changes (`git commit -m 'feat: Add AmazingFeature'`)
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+---
+
+## 🤖 Automated Bot Assistants
+
+NixManager Pro leverages an autonomous suite of GitHub automation bots:
+
+| Bot / Workflow | Status | Description |
+| :--- | :---: | :--- |
+| **Dependabot** | Active | Daily automated vulnerability scanning & package updates for `pip` and GitHub Actions. |
+| **Qodo PR-Agent** | Active | Automated AI code reviews, test suggestions, and pull request descriptions. |
+| **Stale Bot** | Active | Automatically labels and triages inactive issues and pull requests after 30 days. |
+| **Welcome Bot** | Active | Greets first-time open-source contributors with helpful setup guides. |
+| **All-Contributors** | Active | Recognizes all forms of community contributions (code, docs, design, ideas). |
+
+---
+
+## 👥 Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/MikeeeDeV"><img src="https://avatars.githubusercontent.com/u/183979087?v=4" width="100px;" alt="Mohamed Ayman"/><br /><sub><b>Mohamed Ayman</b></sub></a><br /><a href="https://github.com/MikeeeDeV/NixManagerPro/commits?author=MikeeeDeV" title="Code">💻</a> <a href="#design-MikeeeDeV" title="Design">🎨</a> <a href="#maintenance-MikeeeDeV" title="Maintenance">🚧</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/shimonenator"><img src="https://avatars.githubusercontent.com/u/144507?v=4" width="100px;" alt="Shimon Schwartz"/><br /><sub><b>Shimon Schwartz</b></sub></a><br /><a href="https://github.com/MikeeeDeV/NixManagerPro/commits?author=shimonenator" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/apps/dependabot"><img src="https://avatars.githubusercontent.com/in/29110?v=4" width="100px;" alt="Dependabot"/><br /><sub><b>Dependabot</b></sub></a><br /><a href="#maintenance-dependabot" title="Maintenance">🤖</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ---
 

@@ -1,0 +1,45 @@
+{
+  "projectName": "NixManagerPro",
+  "projectOwner": "MikeeeDeV",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "MikeeeDeV",
+      "name": "Mohamed Ayman",
+      "avatar_url": "https://avatars.githubusercontent.com/u/183979087?v=4",
+      "profile": "https://github.com/MikeeeDeV",
+      "contributions": [
+        "code",
+        "design",
+        "maintenance",
+        "doc"
+      ]
+    },
+    {
+      "login": "shimonenator",
+      "name": "Shimon Schwartz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/144507?v=4",
+      "profile": "https://github.com/shimonenator",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "dependabot[bot]",
+      "name": "Dependabot",
+      "avatar_url": "https://avatars.githubusercontent.com/in/29110?v=4",
+      "profile": "https://github.com/apps/dependabot",
+      "contributions": [
+        "maintenance"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7
+}
