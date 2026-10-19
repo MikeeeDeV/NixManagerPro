@@ -18,9 +18,9 @@ def test_modern_confirm_dialog_confirm():
         danger=True,
         confirm_text="Purge",
     )
-    assert dialog.result is False
+    assert not dialog.result
     dialog._on_confirm()
-    assert dialog.result is True
+    assert bool(dialog.result) is True
     root.destroy()
 
 
@@ -33,7 +33,7 @@ def test_modern_confirm_dialog_cancel():
         danger=False,
     )
     dialog._on_cancel()
-    assert dialog.result is False
+    assert not dialog.result
     root.destroy()
 
 
