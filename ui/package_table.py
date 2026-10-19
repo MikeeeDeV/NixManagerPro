@@ -23,6 +23,7 @@ import customtkinter as ctk
 from core.catalog import resolve_rich_details
 from core.exporter import NixEnvironmentExporter
 from utils.icons import get_icon
+from utils.notifications import DesktopNotifier
 from .app_details_dialog import AppDetailsDialog
 from .modern_dialog import show_alert_dialog, show_confirm_dialog
 

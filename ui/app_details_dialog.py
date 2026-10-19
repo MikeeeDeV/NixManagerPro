@@ -73,7 +73,8 @@ class AppDetailsDialog(ctk.CTkToplevel):
 
         # Transient binding to parent
         try:
-            self.transient(top_parent)
+            if isinstance(top_parent, tk.Wm):
+                self.transient(top_parent)
         except Exception:
             pass
 
