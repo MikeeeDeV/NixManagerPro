@@ -88,3 +88,27 @@ async def test_purge_generic_flatpak(mock_executor, tmp_path):
         assert not var_dir.exists()
         assert "Removed flatpak with --delete-data: org.test.Flat" in res
         mock_executor.run.assert_any_await("flatpak uninstall --delete-data -y org.test.Flat")
+
+
+@pytest.mark.asyncio
+async def test_list_flake_profiles(mock_executor):
+    from core.command_executor import CommandResult
+    mock_executor.run.return_value = CommandResult(
+        returncode=0,
+        stdout='{"elements": {"hello": {"storePaths": ["/nix/store/123-hello-2.12.3"]}}}',
+        stderr="",
+    )
+    pm = NixPackageManager(executor=mock_executor)
+    pkgs = await pm.list_flake_profiles()
+    assert len(pkgs) == 1
+    assert pkgs[0].name == "hello"
+    assert pkgs[0].version == "2.12.3"
+    assert pkgs[0].source == "Nix (Flake)"
+
+
+@pytest.mark.asyncio
+async def test_purge_generic_flake(mock_executor, tmp_path):
+    pm = NixPackageManager(executor=mock_executor)
+    pkg = PackageInfo(name="myflake", version="0.1", source="Nix (Flake)")
+    res = await pm.purge_generic(pkg)
+    assert "Removed myflake from Nix flakes profile" in res
