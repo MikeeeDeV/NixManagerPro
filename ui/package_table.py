@@ -407,7 +407,12 @@ class PackageTable(ctk.CTkFrame):
             return
 
         item = resolve_rich_details(selected_pkg.name, source=selected_pkg.source, version=selected_pkg.version)
-        AppDetailsDialog(self, item=item, source=selected_pkg.source)
+        if hasattr(self, "_details_dialog") and self._details_dialog and self._details_dialog.winfo_exists():
+            try:
+                self._details_dialog.destroy()
+            except Exception:
+                pass
+        self._details_dialog = AppDetailsDialog(self, item=item, source=selected_pkg.source)
 
     # ---- uninstall & purge ------------------------------------------------
 
